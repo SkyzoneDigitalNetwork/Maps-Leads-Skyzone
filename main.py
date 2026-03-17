@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 SUPER_ADMIN_ID = os.environ.get('SUPER_ADMIN_ID')
 LOG_GROUP_ID = os.environ.get('LOG_GROUP_ID')
-AI_MONITOR_CHAT_ID = os.environ.get('AI_MONITOR_CHAT_ID')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
 FB_JSON = os.environ.get('FIREBASE_CREDENTIALS_JSON')
 FB_URL = os.environ.get('FIREBASE_DATABASE_URL')
@@ -40,7 +39,13 @@ PORT = int(os.environ.get('PORT', '8080'))
 
 # --- Global State ---
 active_tasks = {} # user_id: task
-recent_logs =[] # For AI Analysis
+recent_logs = [] # For Autonomous AI Analysis
+
+# --- Popular Categories ---
+CATEGORIES =[
+    "Restaurants", "IT Companies", "Hospitals", "Real Estate", 
+    "Plumbers", "Gyms", "Hotels", "Coffee Shops", "Car Repair", "Dentists"
+]
 
 # --- Firebase Init ---
 try:
@@ -64,48 +69,28 @@ def is_authorized(uid):
     user = db.reference(f'bot_users/{uid}').get()
     return bool(user)
 
-# 🌟 MISSING FUNCTION ADDED HERE 🌟
 async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
     """রেন্ডার সার্ভারকে ২৪ ঘণ্টা সজাগ রাখার জন্য পিং করবে"""
     if not RENDER_URL: return
     while True:
         try:
             requests.get(RENDER_URL, timeout=10)
-            logger.info("📡 Keep-alive ping sent.")
-        except Exception:
-            pass
-        await asyncio.sleep(600) # প্রতি ১০ মিনিট পর পর
-
-async def send_log(context, user_name, user_id, action):
-    """টিমের কাজের লগ নির্দিষ্ট গ্রুপে পাঠাবে এবং এআই এর জন্য সেভ রাখবে"""
-    log_text = f"👤 **{user_name}** (`{user_id}`)\n📌 অ্যাকশন: {action}\n🕒 সময়: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-    
-    # Save to memory for AI
-    recent_logs.append(log_text)
-    if len(recent_logs) > 50: recent_logs.pop(0)
-    
-    # Send to Log Group
-    if LOG_GROUP_ID:
-        try:
-            await context.bot.send_message(chat_id=LOG_GROUP_ID, text=log_text, parse_mode='Markdown')
-        except Exception as e:
-            logger.error(f"Log send error: {e}")
+        except Exception: pass
+        await asyncio.sleep(600)
 
 async def analyze_with_ai(context):
-    """Groq AI দিয়ে লগ বিশ্লেষণ করে বাংলায় রিপোর্ট দেবে"""
-    if not GROQ_API_KEY or not AI_MONITOR_CHAT_ID: return
-    
-    if not recent_logs:
-        await context.bot.send_message(chat_id=AI_MONITOR_CHAT_ID, text="🤖 এআই রিপোর্ট: বিশ্লেষণ করার মতো কোনো নতুন লগ নেই।")
-        return
+    """Groq AI দিয়ে স্বয়ংক্রিয়ভাবে লগ বিশ্লেষণ করে গ্রুপে রিপোর্ট দেবে"""
+    if not GROQ_API_KEY or not LOG_GROUP_ID: return
+    if not recent_logs: return
 
-    logs_text = "\n".join(recent_logs[-30:]) # Last 30 logs
+    logs_text = "\n".join(recent_logs)
+    recent_logs.clear() # Clear immediately to prevent duplicate triggers
     
     prompt = (
         "তুমি একজন Expert AI System Analyst. নিচে একটি Google Maps B2B Lead Scraper বটের সাম্প্রতিক ইউজার লগ দেওয়া হলো। "
         "আমার টিমের মেম্বাররা এই বট ব্যবহার করে লিড কালেক্ট করছে। লগগুলো বিশ্লেষণ করে বাংলায় একটি সুন্দর রিপোর্ট তৈরি করো। "
         "রিপোর্টে যা থাকবে:\n"
-        "১. টিমের পারফরম্যান্স কেমন (কে বেশি কাজ করছে)।\n"
+        "১. টিমের পারফরম্যান্স কেমন (কে বেশি কাজ করছে, কোন ক্যাটাগরিতে কাজ হচ্ছে)।\n"
         "২. কোনো এরর বা অস্বাভাবিক কিছু হচ্ছে কি না।\n"
         "৩. সিস্টেম বা কাজের উন্নতি করার জন্য তোমার প্রফেশনাল সাজেশন।\n\n"
         f"লগ ডেটা:\n{logs_text}"
@@ -119,10 +104,27 @@ async def analyze_with_ai(context):
         response = requests.post(url, headers=headers, json=payload, timeout=30)
         if response.status_code == 200:
             ai_reply = response.json()['choices'][0]['message']['content']
-            await context.bot.send_message(chat_id=AI_MONITOR_CHAT_ID, text=f"🧠 **AI System Analysis:**\n\n{ai_reply}", parse_mode='Markdown')
-            recent_logs.clear() # Clear after analysis
+            await context.bot.send_message(chat_id=LOG_GROUP_ID, text=f"🧠 **AI Auto Analysis Report:**\n\n{ai_reply}", parse_mode='Markdown')
     except Exception as e:
         logger.error(f"AI Error: {e}")
+
+async def send_log(context, user_name, user_id, action):
+    """টিমের কাজের লগ নির্দিষ্ট গ্রুপে পাঠাবে এবং এআই এর জন্য সেভ রাখবে"""
+    log_text = f"👤 **{user_name}** (`{user_id}`)\n📌 অ্যাকশন: {action}\n🕒 সময়: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    
+    # Send to Log Group
+    if LOG_GROUP_ID:
+        try:
+            await context.bot.send_message(chat_id=LOG_GROUP_ID, text=log_text, parse_mode='Markdown')
+        except Exception as e:
+            logger.error(f"Log send error: {e}")
+
+    # Save to memory for Autonomous AI
+    recent_logs.append(log_text)
+    
+    # 🌟 AUTONOMOUS AI TRIGGER: প্রতি ১৫টি কাজের পর এআই নিজে থেকে বিশ্লেষণ করবে
+    if len(recent_logs) >= 15:
+        asyncio.create_task(analyze_with_ai(context))
 
 async def extract_email(url):
     try:
@@ -139,7 +141,6 @@ async def extract_email(url):
 # --- Scraper Engine ---
 async def scraper_worker(query, user_id, user_name, context):
     await send_log(context, user_name, user_id, f"স্ক্র্যাপিং শুরু করেছে: `{query}`")
-    
     ref = db.reference(f'gmaps_leads/{user_id}')
     leads_found = 0
 
@@ -224,29 +225,17 @@ async def scraper_worker(query, user_id, user_name, context):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     if not is_authorized(uid):
-        await update.message.reply_text("⛔ আপনি এই বট ব্যবহারের জন্য অনুমোদিত নন।")
+        await update.message.reply_text("⛔ আপনি এই বট ব্যবহারের জন্য অনুমোদিত নন। অ্যাডমিনের সাথে যোগাযোগ করুন।")
         return
 
-    keyboard = [[InlineKeyboardButton("🎯 টার্গেট সেট করুন", callback_data='set_target')],[InlineKeyboardButton("🚀 শুরু করুন", callback_data='start_scraping'), InlineKeyboardButton("🛑 বন্ধ করুন", callback_data='stop_scraping')],[InlineKeyboardButton("📊 আমার লিড চেক", callback_data='check_stats'), InlineKeyboardButton("📥 ডাউনলোড", callback_data='download_leads')]
+    keyboard =[
+        [InlineKeyboardButton("🎯 টার্গেট সেট করুন (ক্যাটাগরি)", callback_data='set_target')],[InlineKeyboardButton("🚀 শুরু করুন", callback_data='start_scraping'), InlineKeyboardButton("🛑 বন্ধ করুন", callback_data='stop_scraping')],[InlineKeyboardButton("📊 আমার লিড চেক", callback_data='check_stats'), InlineKeyboardButton("📥 ডাউনলোড", callback_data='download_leads')]
     ]
     
-    # Super Admin Panel
     if is_super_admin(uid):
         keyboard.append([InlineKeyboardButton("👑 সুপার অ্যাডমিন প্যানেল", callback_data='super_admin_panel')])
 
     await update.message.reply_text("🗺️ **Google Maps Scraper Dashboard**\n\nআপনার কাজ শুরু করতে নিচের বাটন ব্যবহার করুন:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-async def add_user_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = str(update.effective_user.id)
-    if not is_super_admin(uid): return
-    try:
-        new_id = context.args[0]
-        name = " ".join(context.args[1:]) if len(context.args) > 1 else "Team Member"
-        db.reference(f'bot_users/{new_id}').set({"name": name, "added_at": str(datetime.now())})
-        await update.message.reply_text(f"✅ ইউজার `{new_id}` ({name}) সফলভাবে যুক্ত হয়েছে।")
-        await send_log(context, "Super Admin", uid, f"নতুন ইউজার অ্যাড করেছে: {new_id}")
-    except:
-        await update.message.reply_text("❌ ব্যবহার: `/add_user <user_id> <name>`")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -256,14 +245,35 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not is_authorized(uid): return
 
+    # --- Target Setting (Category -> Location) ---
     if query.data == 'set_target':
-        context.user_data['awaiting_target'] = True
-        await query.message.reply_text("✍️ **ক্যাটাগরি এবং লোকেশন লিখে পাঠান:**\n(যেমন: `Plumbers in New York`)")
+        # Show Categories
+        keyboard = []
+        row =[]
+        for i, cat in enumerate(CATEGORIES):
+            row.append(InlineKeyboardButton(cat, callback_data=f'cat_{cat}'))
+            if len(row) == 2 or i == len(CATEGORIES) - 1:
+                keyboard.append(row)
+                row = []
+        keyboard.append([InlineKeyboardButton("✍️ কাস্টম ক্যাটাগরি লিখব", callback_data='cat_custom')])
         
+        await query.message.reply_text("📂 **প্রথমে একটি ক্যাটাগরি সিলেক্ট করুন:**", reply_markup=InlineKeyboardMarkup(keyboard))
+        
+    elif query.data.startswith('cat_'):
+        selected_cat = query.data.split('cat_')[1]
+        if selected_cat == 'custom':
+            context.user_data['awaiting_custom_cat'] = True
+            await query.message.reply_text("✍️ আপনার কাস্টম ক্যাটাগরি লিখে পাঠান (যেমন: Car Wash):")
+        else:
+            context.user_data['selected_category'] = selected_cat
+            context.user_data['awaiting_location'] = True
+            await query.message.reply_text(f"✅ ক্যাটাগরি সিলেক্ট হয়েছে: **{selected_cat}**\n\n🌍 **এবার জায়গার নাম লিখে পাঠান:**\n(যেমন: `Dhaka` বা `New York`)", parse_mode='Markdown')
+
+    # --- Scraping Controls ---
     elif query.data == 'start_scraping':
         target = context.user_data.get('target_query')
         if not target:
-            await query.message.reply_text("⚠️ আগে '🎯 টার্গেট সেট করুন' এ ক্লিক করুন।")
+            await query.message.reply_text("⚠️ আগে '🎯 টার্গেট সেট করুন' এ ক্লিক করে ক্যাটাগরি ও লোকেশন দিন।")
             return
         if uid in active_tasks:
             await query.message.reply_text("⚠️ আপনার একটি কাজ অলরেডি চলছে!")
@@ -302,13 +312,37 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         output.name = f"My_Leads_{datetime.now().strftime('%Y%m%d')}.csv"
         await context.bot.send_document(uid, output, caption=f"✅ আপনার মোট {len(leads)} টি লিড।")
 
-    # --- SUPER ADMIN PANEL ---
+    # --- SUPER ADMIN PANEL (Button Based) ---
     elif query.data == 'super_admin_panel':
         if not is_super_admin(uid): return
-        btns = [[InlineKeyboardButton("👥 টিম মেম্বারদের লিড দেখুন", callback_data='sa_view_users')],[InlineKeyboardButton("🧠 AI System Analysis", callback_data='sa_ai_analyze')]
+        btns = [[InlineKeyboardButton("➕ ইউজার অ্যাড করুন", callback_data='sa_add_user')],[InlineKeyboardButton("➖ ইউজার রিমুভ করুন", callback_data='sa_remove_user_list')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও লিড", callback_data='sa_view_users')]
         ]
-        await query.message.reply_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
+        await query.message.reply_text("👑 **Super Admin Control**\n(এখান থেকে আপনি ইউজার ও তাদের লিড কন্ট্রোল করতে পারবেন)", reply_markup=InlineKeyboardMarkup(btns))
         
+    elif query.data == 'sa_add_user':
+        if not is_super_admin(uid): return
+        context.user_data['awaiting_new_user_data'] = True
+        await query.message.reply_text("✍️ **নতুন ইউজারের আইডি এবং নাম লিখে পাঠান:**\nফরম্যাট: `User_ID Name`\nউদাহরণ: `123456789 Rahim`", parse_mode='Markdown')
+
+    elif query.data == 'sa_remove_user_list':
+        if not is_super_admin(uid): return
+        users = db.reference('bot_users').get() or {}
+        if not users:
+            await query.message.reply_text("কোনো টিম মেম্বার নেই।")
+            return
+        
+        keyboard =[]
+        for u_id, u_data in users.items():
+            keyboard.append([InlineKeyboardButton(f"❌ রিমুভ: {u_data.get('name')} ({u_id})", callback_data=f'rm_usr_{u_id}')])
+        await query.message.reply_text("যাকে রিমুভ করতে চান তার নামের ওপর ক্লিক করুন:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+    elif query.data.startswith('rm_usr_'):
+        if not is_super_admin(uid): return
+        target_uid = query.data.split('rm_usr_')[1]
+        db.reference(f'bot_users/{target_uid}').delete()
+        await query.message.reply_text(f"✅ ইউজার `{target_uid}` কে সফলভাবে রিমুভ করা হয়েছে। সে আর বট ব্যবহার করতে পারবে না।")
+        await send_log(context, "Super Admin", uid, f"ইউজার রিমুভ করেছে: {target_uid}")
+
     elif query.data == 'sa_view_users':
         if not is_super_admin(uid): return
         users = db.reference('bot_users').get() or {}
@@ -328,29 +362,53 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(f"✅ ইউজার `{target_uid}` এর সব লিড ডিলিট করা হয়েছে।")
         await send_log(context, "Super Admin", uid, f"ইউজার {target_uid} এর লিড ডিলিট করেছে।")
 
-    elif query.data == 'sa_ai_analyze':
-        if not is_super_admin(uid): return
-        await query.message.reply_text("🧠 এআই লগ বিশ্লেষণ করছে... দয়া করে অপেক্ষা করুন।")
-        await analyze_with_ai(context)
-
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
+    text = update.message.text.strip()
+    
+    # --- Super Admin Adding User ---
+    if context.user_data.get('awaiting_new_user_data') and is_super_admin(uid):
+        parts = text.split(maxsplit=1)
+        if len(parts) >= 1:
+            new_id = parts[0]
+            name = parts[1] if len(parts) > 1 else "Team Member"
+            db.reference(f'bot_users/{new_id}').set({"name": name, "added_at": str(datetime.now())})
+            await update.message.reply_text(f"✅ ইউজার `{new_id}` ({name}) সফলভাবে যুক্ত হয়েছে।")
+            await send_log(context, "Super Admin", uid, f"নতুন ইউজার অ্যাড করেছে: {new_id}")
+        context.user_data['awaiting_new_user_data'] = False
+        return
+
     if not is_authorized(uid): return
     
-    if context.user_data.get('awaiting_target'):
-        context.user_data['target_query'] = update.message.text.strip()
-        context.user_data['awaiting_target'] = False
-        await update.message.reply_text(f"✅ **টার্গেট সেট হয়েছে:** `{context.user_data['target_query']}`\nএখন '🚀 শুরু করুন' এ ক্লিক করুন।")
-        await send_log(context, update.effective_user.first_name, uid, f"নতুন টার্গেট সেট করেছে: {context.user_data['target_query']}")
+    # --- Target Setting Logic ---
+    if context.user_data.get('awaiting_custom_cat'):
+        context.user_data['selected_category'] = text
+        context.user_data['awaiting_custom_cat'] = False
+        context.user_data['awaiting_location'] = True
+        await update.message.reply_text(f"✅ ক্যাটাগরি: **{text}**\n🌍 **এবার জায়গার নাম লিখে পাঠান:**\n(যেমন: `Dhaka` বা `New York`)", parse_mode='Markdown')
+        return
+
+    if context.user_data.get('awaiting_location'):
+        location = text
+        category = context.user_data.get('selected_category', 'Businesses')
+        
+        # Combine Category and Location
+        context.user_data['target_query'] = f"{category} in {location}"
+        context.user_data['awaiting_location'] = False
+        
+        keyboard = [[InlineKeyboardButton("🚀 স্ক্র্যাপিং শুরু করুন", callback_data='start_scraping')]]
+        await update.message.reply_text(
+            f"✅ **ফাইনাল টার্গেট সেট হয়েছে:** `{context.user_data['target_query']}`\nএখন স্ক্র্যাপিং শুরু করতে পারেন।", 
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        await send_log(context, update.effective_user.first_name, uid, f"টার্গেট সেট করেছে: {context.user_data['target_query']}")
 
 def main():
     app = Application.builder().token(TOKEN).build()
-    
-    # 🌟 FIXED: keep_alive_task is now defined and called correctly
     app.job_queue.run_once(keep_alive_task, 5)
     
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("add_user", add_user_cmd)) # Super Admin Command
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
