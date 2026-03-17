@@ -2,102 +2,243 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Profile | Skyzone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Skyzone Dashboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #01875f;
+            --danger-color: #d32f2f;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-main: #202124;
+            --text-muted: #5f6368;
+        }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--tg-theme-bg-color, #f4f6f8);
-            color: var(--tg-theme-text-color, #333);
-            margin: 0; padding: 20px; text-align: center;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0; padding: 15px;
+            padding-bottom: 80px; /* Space for bottom button */
         }
-        .card {
-            background-color: var(--tg-theme-secondary-bg-color, #fff);
-            border-radius: 15px; padding: 20px; margin-top: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        /* --- Profile Section --- */
+        .profile-card {
+            background: var(--card-bg);
+            border-radius: 16px; padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+            text-align: center; margin-bottom: 20px;
         }
-        h2 { margin: 0 0 5px 0; color: #01875f; }
-        .stats-grid {
-            display: flex; justify-content: space-between; margin-top: 20px;
+        .profile-card h2 { margin: 0; font-size: 22px; color: var(--primary-color); }
+        .profile-card p { margin: 5px 0 15px 0; font-size: 13px; color: var(--text-muted); }
+        
+        .stats-container {
+            display: flex; justify-content: space-between; gap: 10px;
         }
         .stat-box {
-            background: #f8f9fa; padding: 15px; border-radius: 10px; width: 45%;
-            border: 1px solid #e8eaed;
+            background: #f8f9fa; flex: 1; padding: 15px 10px;
+            border-radius: 12px; border: 1px solid #e8eaed;
         }
-        .stat-box h3 { margin: 0; font-size: 24px; color: #202124; }
-        .stat-box p { margin: 5px 0 0 0; font-size: 12px; color: #5f6368; }
-        .timer-box {
-            margin-top: 25px; padding: 15px; border-radius: 10px;
-            background-color: #fff0f0; border: 1px solid #ffcdd2;
+        .stat-box h3 { margin: 0; font-size: 24px; color: var(--text-main); }
+        .stat-box span { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; }
+
+        /* --- Timer Section --- */
+        .timer-card {
+            background: linear-gradient(135deg, #fff0f0 0%, #ffebee 100%);
+            border: 2px solid #ffcdd2; border-radius: 16px;
+            padding: 20px; text-align: center; margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(211, 47, 47, 0.1);
         }
-        .timer-text { font-size: 22px; font-weight: bold; color: #d32f2f; margin: 10px 0; }
-        .close-btn {
-            background-color: #01875f; color: white; border: none;
-            padding: 12px 30px; border-radius: 25px; font-weight: bold;
-            margin-top: 30px; cursor: pointer; width: 100%; font-size: 16px;
+        .timer-title { font-size: 12px; font-weight: 700; color: var(--danger-color); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .countdown { display: flex; justify-content: center; gap: 10px; }
+        .time-box { background: var(--card-bg); border-radius: 8px; width: 60px; padding: 10px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .time-box .num { display: block; font-size: 24px; font-weight: 700; color: var(--danger-color); line-height: 1; }
+        .time-box .label { font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-top: 5px; display: block; }
+        .expired-msg { font-size: 18px; font-weight: 700; color: var(--danger-color); display: none; }
+
+        /* --- Pricing Section --- */
+        .section-title { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 15px; color: var(--text-main); }
+        .pricing-card {
+            background: var(--card-bg); border-radius: 16px; padding: 20px;
+            margin-bottom: 15px; border: 1px solid #e8eaed;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03); position: relative;
+            overflow: hidden;
+        }
+        .pricing-card.premium { border: 2px solid var(--primary-color); }
+        .badge {
+            position: absolute; top: 12px; right: -25px; background: var(--primary-color);
+            color: white; font-size: 10px; font-weight: bold; padding: 4px 30px;
+            transform: rotate(45deg); text-transform: uppercase;
+        }
+        .plan-name { font-size: 16px; font-weight: 700; margin: 0 0 5px 0; }
+        .plan-price { font-size: 24px; font-weight: 700; color: var(--primary-color); margin: 0 0 10px 0; }
+        .plan-desc { font-size: 12px; color: var(--text-muted); margin: 0; }
+
+        /* --- Payment Section --- */
+        .payment-card {
+            background: var(--card-bg); border-radius: 16px; padding: 20px;
+            margin-bottom: 20px; border: 1px solid #e8eaed;
+        }
+        .pay-method {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #f8f9fa; padding: 12px 15px; border-radius: 10px; margin-bottom: 10px;
+        }
+        .pay-method span { font-size: 15px; font-weight: 600; }
+        .copy-btn {
+            background: #e8f0fe; color: #1a73e8; border: none; padding: 6px 15px;
+            border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
+        }
+        .copy-btn:active { background: #d2e3fc; }
+
+        /* --- Floating Action Button --- */
+        .submit-btn {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 400px; background: var(--primary-color); color: white;
+            border: none; padding: 15px; border-radius: 30px; font-size: 16px;
+            font-weight: 700; box-shadow: 0 4px 15px rgba(1, 135, 95, 0.4);
+            cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
         }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2 id="userName">Loading...</h2>
-        <p style="margin:0; font-size: 13px; color: #666;">Welcome to your Dashboard</p>
-
-        <div class="stats-grid">
+    <!-- 1. Profile & Stats -->
+    <div class="profile-card">
+        <h2 id="userName">User Profile</h2>
+        <p>User ID: <span id="userId" style="font-weight:bold; color:#333;">...</span></p>
+        
+        <div class="stats-container">
             <div class="stat-box">
                 <h3 id="ltSearches">0</h3>
-                <p>Total Searches</p>
+                <span>Total Searches</span>
             </div>
             <div class="stat-box">
                 <h3 id="ltLeads">0</h3>
-                <p>Total Leads Found</p>
+                <span>Total Leads</span>
             </div>
-        </div>
-
-        <div class="timer-box">
-            <div style="font-size: 13px; color: #d32f2f; font-weight: bold; text-transform: uppercase;">Subscription Time Left</div>
-            <div class="timer-text" id="countdown">Calculating...</div>
         </div>
     </div>
 
-    <button class="close-btn" onclick="Telegram.WebApp.close()">Close Dashboard</button>
+    <!-- 2. VIP Red Countdown Timer -->
+    <div class="timer-card">
+        <div class="timer-title">Subscription Time Left</div>
+        <div class="countdown" id="timerBox">
+            <div class="time-box"><span class="num" id="t-days">00</span><span class="label">Days</span></div>
+            <div class="time-box"><span class="num" id="t-hours">00</span><span class="label">Hours</span></div>
+            <div class="time-box"><span class="num" id="t-mins">00</span><span class="label">Mins</span></div>
+            <div class="time-box"><span class="num" id="t-secs">00</span><span class="label">Secs</span></div>
+        </div>
+        <div class="expired-msg" id="expiredMsg">⚠️ ACCOUNT EXPIRED!</div>
+    </div>
+
+    <!-- 3. Packages Section -->
+    <div class="section-title">💎 Subscription Packages</div>
+    
+    <div class="pricing-card">
+        <h3 class="plan-name">🥉 1 Month (Basic Plan)</h3>
+        <p class="plan-price">500 BDT</p>
+        <p class="plan-desc">Google Maps থেকে আনলিমিটেড B2B লিড (ইমেইল, ফোন, রেটিং) কালেক্ট করুন।</p>
+    </div>
+
+    <div class="pricing-card">
+        <h3 class="plan-name">🥈 3 Months (Standard Plan)</h3>
+        <p class="plan-price">1350 BDT <span style="font-size:12px; color:#d32f2f; text-decoration:line-through;">1500 BDT</span></p>
+        <p class="plan-desc">১০% ছাড়! নিরবচ্ছিন্নভাবে ৩ মাস লিড কালেক্ট করুন।</p>
+    </div>
+
+    <div class="pricing-card premium">
+        <div class="badge">Best Value</div>
+        <h3 class="plan-name">🥇 6 Months (Premium Plan)</h3>
+        <p class="plan-price">2500 BDT <span style="font-size:12px; color:#d32f2f; text-decoration:line-through;">3000 BDT</span></p>
+        <p class="plan-desc">সর্বোচ্চ ছাড়! প্রফেশনাল মার্কেটারদের জন্য বেস্ট প্যাকেজ।</p>
+    </div>
+
+    <!-- 4. Payment Section -->
+    <div class="section-title">💳 Payment Methods (Personal)</div>
+    <div class="payment-card">
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 0;">নিচের নাম্বারে Send Money করে স্ক্রিনশট এবং আপনার User ID অ্যাডমিনকে পাঠান।</p>
+        
+        <div class="pay-method">
+            <span>✅ বিকাশ</span>
+            <span style="font-family: monospace; font-size: 16px;">01757481646</span>
+            <button class="copy-btn" onclick="copyNumber('01757481646')">Copy</button>
+        </div>
+        
+        <div class="pay-method">
+            <span>✅ নগদ</span>
+            <span style="font-family: monospace; font-size: 16px;">01757481646</span>
+            <button class="copy-btn" onclick="copyNumber('01757481646')">Copy</button>
+        </div>
+        <p style="font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 0;">(Binance বা Crypto তে পেমেন্ট করতে চাইলে ইনবক্সে যোগাযোগ করুন)</p>
+    </div>
+
+    <!-- 5. Submit Button (Fixed at bottom) -->
+    <button class="submit-btn" onclick="contactAdmin()">Submit Payment Info 🚀</button>
 
     <script>
         // Initialize Telegram Web App
-        window.Telegram.WebApp.expand();
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Open in full screen
 
-        // Get URL Parameters
+        // Parse URL Parameters passed from Python Bot
         const urlParams = new URLSearchParams(window.location.search);
-        document.getElementById('userName').innerText = urlParams.get('name') || 'User';
-        document.getElementById('ltSearches').innerText = urlParams.get('searches') || '0';
-        document.getElementById('ltLeads').innerText = urlParams.get('leads') || '0';
-
-        // Countdown Logic
+        const uid = urlParams.get('uid') || 'Unknown';
+        const uName = urlParams.get('name') || 'Developer';
+        const ltSearches = urlParams.get('searches') || '0';
+        const ltLeads = urlParams.get('leads') || '0';
         const endsAtStr = urlParams.get('ends');
-        if (endsAtStr) {
+
+        // Set Profile Data
+        document.getElementById('userName').innerText = decodeURIComponent(uName);
+        document.getElementById('userId').innerText = uid;
+        document.getElementById('ltSearches').innerText = ltSearches;
+        document.getElementById('ltLeads').innerText = ltLeads;
+
+        // Copy Function
+        function copyNumber(num) {
+            navigator.clipboard.writeText(num).then(() => {
+                tg.showAlert("Number Copied: " + num);
+            });
+        }
+
+        // Contact Admin Function
+        function contactAdmin() {
+            // Opens Telegram chat with you automatically
+            tg.openTelegramLink("https://t.me/AfMdshakil");
+        }
+
+        // --- VIP Red Timer Logic ---
+        const timerBox = document.getElementById('timerBox');
+        const expiredMsg = document.getElementById('expiredMsg');
+
+        if (endsAtStr === 'expired') {
+            timerBox.style.display = 'none';
+            expiredMsg.style.display = 'block';
+        } else if (endsAtStr && endsAtStr !== 'N/A') {
             const endsAt = new Date(endsAtStr).getTime();
             
-            setInterval(function() {
+            const x = setInterval(function() {
                 const now = new Date().getTime();
                 const distance = endsAt - now;
 
                 if (distance < 0) {
-                    document.getElementById('countdown').innerText = "EXPIRED";
+                    clearInterval(x);
+                    timerBox.style.display = 'none';
+                    expiredMsg.style.display = 'block';
                     return;
                 }
 
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-                document.getElementById('countdown').innerText = 
-                    days + "d " + hours + "h " + minutes + "m " + seconds + "s";
+                document.getElementById('t-days').innerText = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0');
+                document.getElementById('t-hours').innerText = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
+                document.getElementById('t-mins').innerText = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+                document.getElementById('t-secs').innerText = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
             }, 1000);
         } else {
-            document.getElementById('countdown').innerText = "Lifetime / Admin";
+            // Super Admin or Lifetime
+            document.getElementById('t-days').innerText = "∞";
+            document.getElementById('t-hours').innerText = "∞";
+            document.getElementById('t-mins').innerText = "∞";
+            document.getElementById('t-secs').innerText = "∞";
         }
     </script>
 </body>
