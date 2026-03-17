@@ -39,7 +39,7 @@ PORT = int(os.environ.get('PORT', '8080'))
 
 # --- Global State ---
 active_tasks = {} # user_id: task
-recent_logs = [] # For Autonomous AI Analysis
+recent_logs =[] # For Autonomous AI Analysis
 
 # --- Popular Categories ---
 CATEGORIES =[
@@ -78,7 +78,7 @@ async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
         except Exception: pass
         await asyncio.sleep(600)
 
-async def analyze_with_ai(context):
+async def analyze_with_ai(context, is_error=False):
     """Groq AI দিয়ে স্বয়ংক্রিয়ভাবে লগ বিশ্লেষণ করে গ্রুপে রিপোর্ট দেবে"""
     if not GROQ_API_KEY or not LOG_GROUP_ID: return
     if not recent_logs: return
@@ -86,15 +86,25 @@ async def analyze_with_ai(context):
     logs_text = "\n".join(recent_logs)
     recent_logs.clear() # Clear immediately to prevent duplicate triggers
     
-    prompt = (
-        "তুমি একজন Expert AI System Analyst. নিচে একটি Google Maps B2B Lead Scraper বটের সাম্প্রতিক ইউজার লগ দেওয়া হলো। "
-        "আমার টিমের মেম্বাররা এই বট ব্যবহার করে লিড কালেক্ট করছে। লগগুলো বিশ্লেষণ করে বাংলায় একটি সুন্দর রিপোর্ট তৈরি করো। "
-        "রিপোর্টে যা থাকবে:\n"
-        "১. টিমের পারফরম্যান্স কেমন (কে বেশি কাজ করছে, কোন ক্যাটাগরিতে কাজ হচ্ছে)।\n"
-        "২. কোনো এরর বা অস্বাভাবিক কিছু হচ্ছে কি না।\n"
-        "৩. সিস্টেম বা কাজের উন্নতি করার জন্য তোমার প্রফেশনাল সাজেশন।\n\n"
-        f"লগ ডেটা:\n{logs_text}"
-    )
+    if is_error:
+        prompt = (
+            "তুমি একজন Expert AI System Analyst. নিচে একটি Google Maps B2B Lead Scraper বটের লগ দেওয়া হলো যেখানে একটি 'ERROR' বা ক্র্যাশ হয়েছে। "
+            "লগটি বিশ্লেষণ করে বাংলায় একটি ইমার্জেন্সি রিপোর্ট তৈরি করো। "
+            "রিপোর্টে যা থাকবে:\n"
+            "১. ঠিক কী এরর হয়েছে এবং কেন হয়েছে।\n"
+            "২. এটি সমাধানের জন্য ডেভেলপারকে কী করতে হবে (Step-by-step)।\n\n"
+            f"লগ ডেটা:\n{logs_text}"
+        )
+    else:
+        prompt = (
+            "তুমি একজন Expert AI System Analyst. নিচে একটি Google Maps B2B Lead Scraper বটের সাম্প্রতিক ইউজার লগ দেওয়া হলো। "
+            "আমার টিমের মেম্বাররা এই বট ব্যবহার করে লিড কালেক্ট করছে। লগগুলো বিশ্লেষণ করে বাংলায় একটি সুন্দর রিপোর্ট তৈরি করো। "
+            "রিপোর্টে যা থাকবে:\n"
+            "১. টিমের পারফরম্যান্স কেমন (কে বেশি কাজ করছে, কোন ক্যাটাগরিতে কাজ হচ্ছে)।\n"
+            "২. কোনো এরর বা অস্বাভাবিক কিছু হচ্ছে কি না।\n"
+            "৩. সিস্টেম বা কাজের উন্নতি করার জন্য তোমার প্রফেশনাল সাজেশন।\n\n"
+            f"লগ ডেটা:\n{logs_text}"
+        )
 
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
@@ -104,7 +114,8 @@ async def analyze_with_ai(context):
         response = requests.post(url, headers=headers, json=payload, timeout=30)
         if response.status_code == 200:
             ai_reply = response.json()['choices'][0]['message']['content']
-            await context.bot.send_message(chat_id=LOG_GROUP_ID, text=f"🧠 **AI Auto Analysis Report:**\n\n{ai_reply}", parse_mode='Markdown')
+            header = "🚨 **AI EMERGENCY ALERT:**" if is_error else "🧠 **AI Auto Analysis Report:**"
+            await context.bot.send_message(chat_id=LOG_GROUP_ID, text=f"{header}\n\n{ai_reply}", parse_mode='Markdown')
     except Exception as e:
         logger.error(f"AI Error: {e}")
 
@@ -122,9 +133,11 @@ async def send_log(context, user_name, user_id, action):
     # Save to memory for Autonomous AI
     recent_logs.append(log_text)
     
-    # 🌟 AUTONOMOUS AI TRIGGER: প্রতি ১৫টি কাজের পর এআই নিজে থেকে বিশ্লেষণ করবে
-    if len(recent_logs) >= 15:
-        asyncio.create_task(analyze_with_ai(context))
+    # 🌟 AUTONOMOUS AI TRIGGER: এরর হলে সাথে সাথে, অথবা ১৫টি কাজের পর বিশ্লেষণ করবে
+    if "এরর" in action or "Error" in action or "Executable doesn't exist" in action:
+        asyncio.create_task(analyze_with_ai(context, is_error=True))
+    elif len(recent_logs) >= 15:
+        asyncio.create_task(analyze_with_ai(context, is_error=False))
 
 async def extract_email(url):
     try:
@@ -133,7 +146,7 @@ async def extract_email(url):
                 if response.status == 200:
                     html = await response.text()
                     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', html)
-                    valid_emails =[e for e in emails if not any(x in e.lower() for x in ['.png', '.jpg', 'sentry', 'example'])]
+                    valid_emails =[e for e in emails if not any(x in e.lower() for x in['.png', '.jpg', 'sentry', 'example'])]
                     return valid_emails[0] if valid_emails else "N/A"
     except: pass
     return "N/A"
@@ -214,8 +227,11 @@ async def scraper_worker(query, user_id, user_name, context):
             await browser.close()
             
     except Exception as e:
-        await send_log(context, user_name, user_id, f"❌ এরর খেয়েছে: {str(e)[:100]}")
-        await context.bot.send_message(user_id, f"❌ স্ক্র্যাপিং এরর: {e}")
+        error_msg = str(e)
+        await send_log(context, user_name, user_id, f"❌ স্ক্র্যাপিং এরর খেয়েছে:\n`{error_msg[:200]}`")
+        await context.bot.send_message(user_id, f"❌ স্ক্র্যাপিং এরর: দয়া করে কিছুক্ষণ পর আবার চেষ্টা করুন।")
+        if user_id in active_tasks: del active_tasks[user_id]
+        return # Stop execution here
     
     if user_id in active_tasks: del active_tasks[user_id]
     await context.bot.send_message(user_id, f"✅ **স্ক্র্যাপিং সম্পন্ন!**\nনতুন লিড: **{leads_found}** টি।")
@@ -228,8 +244,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ আপনি এই বট ব্যবহারের জন্য অনুমোদিত নন। অ্যাডমিনের সাথে যোগাযোগ করুন।")
         return
 
-    keyboard =[
-        [InlineKeyboardButton("🎯 টার্গেট সেট করুন (ক্যাটাগরি)", callback_data='set_target')],[InlineKeyboardButton("🚀 শুরু করুন", callback_data='start_scraping'), InlineKeyboardButton("🛑 বন্ধ করুন", callback_data='stop_scraping')],[InlineKeyboardButton("📊 আমার লিড চেক", callback_data='check_stats'), InlineKeyboardButton("📥 ডাউনলোড", callback_data='download_leads')]
+    keyboard =[[InlineKeyboardButton("🎯 টার্গেট সেট করুন (ক্যাটাগরি)", callback_data='set_target')],[InlineKeyboardButton("🚀 শুরু করুন", callback_data='start_scraping'), InlineKeyboardButton("🛑 বন্ধ করুন", callback_data='stop_scraping')],[InlineKeyboardButton("📊 আমার লিড চেক", callback_data='check_stats'), InlineKeyboardButton("📥 ডাউনলোড", callback_data='download_leads')]
     ]
     
     if is_super_admin(uid):
@@ -248,13 +263,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Target Setting (Category -> Location) ---
     if query.data == 'set_target':
         # Show Categories
-        keyboard = []
+        keyboard =[]
         row =[]
         for i, cat in enumerate(CATEGORIES):
             row.append(InlineKeyboardButton(cat, callback_data=f'cat_{cat}'))
             if len(row) == 2 or i == len(CATEGORIES) - 1:
                 keyboard.append(row)
-                row = []
+                row =[]
         keyboard.append([InlineKeyboardButton("✍️ কাস্টম ক্যাটাগরি লিখব", callback_data='cat_custom')])
         
         await query.message.reply_text("📂 **প্রথমে একটি ক্যাটাগরি সিলেক্ট করুন:**", reply_markup=InlineKeyboardMarkup(keyboard))
