@@ -38,8 +38,8 @@ RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
 PORT = int(os.environ.get('PORT', '8080'))
 
 # --- Global State ---
-active_tasks = {} # user_id: task
-recent_logs =[] # For Autonomous AI Analysis
+active_tasks = {} 
+recent_logs =[] 
 
 # --- Popular Categories ---
 CATEGORIES =[
@@ -107,7 +107,7 @@ async def analyze_with_ai(context, is_error=False):
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-        payload = {"model": "llama-3.3-70b-versatile", "messages":[{"role": "user", "content": prompt}], "temperature": 0.7}
+        payload = {"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.7}
         
         response = requests.post(url, headers=headers, json=payload, timeout=30)
         if response.status_code == 200:
@@ -119,15 +119,12 @@ async def analyze_with_ai(context, is_error=False):
 
 async def send_log(context, user_name, user_id, action):
     log_text = f"👤 **{user_name}** (`{user_id}`)\n📌 অ্যাকশন: {action}\n🕒 সময়: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-    
     if LOG_GROUP_ID:
         try:
             await context.bot.send_message(chat_id=LOG_GROUP_ID, text=log_text, parse_mode='Markdown')
-        except Exception as e:
-            logger.error(f"Log send error: {e}")
+        except Exception: pass
 
     recent_logs.append(log_text)
-    
     if "এরর" in action or "Error" in action or "Executable doesn't exist" in action:
         asyncio.create_task(analyze_with_ai(context, is_error=True))
     elif len(recent_logs) >= 15:
@@ -151,7 +148,6 @@ async def scraper_worker(query, user_id, user_name, context):
     ref = db.reference(f'gmaps_leads/{user_id}')
     leads_found = 0
 
-    # Send initial status message
     status_msg = await context.bot.send_message(
         chat_id=user_id, 
         text=f"🚀 **{query}** এর জন্য ম্যাপে খোঁজা হচ্ছে...\nদয়া করে অপেক্ষা করুন।", 
@@ -167,7 +163,6 @@ async def scraper_worker(query, user_id, user_name, context):
             await page.goto(search_url, timeout=60000)
             await page.wait_for_timeout(5000)
             
-            # Scroll to load all places
             scrollable_div = await page.query_selector('div[role="feed"]')
             if scrollable_div:
                 for _ in range(6):
@@ -183,22 +178,17 @@ async def scraper_worker(query, user_id, user_name, context):
             
             total_places = len(place_urls)
             await context.bot.edit_message_text(
-                chat_id=user_id, 
-                message_id=status_msg.message_id,
-                text=f"🔍 **{total_places}** টি বিজনেস পাওয়া গেছে।\nএখন একটি একটি করে ডেটা সেভ করা হচ্ছে...",
-                parse_mode='Markdown'
+                chat_id=user_id, message_id=status_msg.message_id,
+                text=f"🔍 **{total_places}** টি বিজনেস পাওয়া গেছে।\nএখন একটি একটি করে ডেটা সেভ করা হচ্ছে...", parse_mode='Markdown'
             )
 
-            # Extract Data
             for idx, url in enumerate(place_urls):
                 if user_id not in active_tasks: break
                 
-                # 🌟 LIVE UPDATE: Update Telegram message every 3 items to avoid flood limits
                 if idx % 3 == 0 or idx == 0:
                     try:
                         await context.bot.edit_message_text(
-                            chat_id=user_id,
-                            message_id=status_msg.message_id,
+                            chat_id=user_id, message_id=status_msg.message_id,
                             text=f"⏳ **লাইভ স্ক্র্যাপিং চলছে...**\n\n🎯 টার্গেট: `{query}`\n🔍 মোট পাওয়া গেছে: **{total_places}** টি\n🔄 চেক করা হয়েছে: **{idx}** টি\n✅ সেভ হয়েছে: **{leads_found}** টি লিড",
                             parse_mode='Markdown'
                         )
@@ -206,42 +196,66 @@ async def scraper_worker(query, user_id, user_name, context):
 
                 try:
                     await page.goto(url, timeout=30000)
-                    await page.wait_for_timeout(2000)
+                    await page.wait_for_timeout(3000) # Give it time to load DOM
                     
-                    # Name
                     name_el = await page.query_selector('h1')
                     name = await name_el.inner_text() if name_el else "Unknown"
                     
-                    # Rating & Total Reviews
+                    # 🌟 DEEP EXTRACTION FOR RATING & REVIEWS
                     rating = 0.0
                     total_reviews = 0
-                    rating_el = await page.query_selector('div[aria-label*="stars"]')
-                    if rating_el:
-                        rating_text = await rating_el.get_attribute('aria-label')
-                        if rating_text:
-                            # Example: "4.5 stars 1,069 Reviews"
-                            r_match = re.search(r'([\d\.]+)\s*stars', rating_text)
-                            if r_match: rating = float(r_match.group(1))
-                            
-                            rev_match = re.search(r'([\d,]+)\s*Reviews?', rating_text, re.IGNORECASE)
-                            if rev_match: total_reviews = int(rev_match.group(1).replace(',', ''))
                     
-                    # Histogram (1 to 5 stars) - Try to extract if visible in DOM
+                    rating_text = await page.evaluate('''() => {
+                        let el = document.querySelector('span[aria-label*="stars"], div[aria-label*="stars"], button[aria-label*="stars"]');
+                        if (el) return el.getAttribute('aria-label');
+                        let fallback = document.querySelector('.F7nice');
+                        return fallback ? fallback.innerText : '';
+                    }''')
+                    
+                    if rating_text:
+                        r_match = re.search(r'([\d\.]+)\s*stars?', rating_text, re.IGNORECASE)
+                        if r_match: 
+                            rating = float(r_match.group(1))
+                        else:
+                            r_match2 = re.search(r'([\d\.]+)', rating_text)
+                            if r_match2: rating = float(r_match2.group(1))
+                            
+                        rev_match = re.search(r'([\d,]+)\s*reviews?', rating_text, re.IGNORECASE)
+                        if rev_match: 
+                            total_reviews = int(rev_match.group(1).replace(',', ''))
+                        else:
+                            rev_match2 = re.search(r'\(([\d,]+)\)', rating_text)
+                            if rev_match2: total_reviews = int(rev_match2.group(1).replace(',', ''))
+
+                    # 🌟 FORCE CLICK "REVIEWS" TAB TO LOAD HISTOGRAM
                     r5 = r4 = r3 = r2 = r1 = 0
                     try:
-                        for star in range(5, 0, -1):
-                            star_row = await page.query_selector(f'tr[aria-label*="{star} stars,"]')
-                            if star_row:
-                                label = await star_row.get_attribute('aria-label')
-                                s_match = re.search(r'(\d+)\s*reviews?', label, re.IGNORECASE)
-                                if s_match:
-                                    val = int(s_match.group(1))
-                                    if star == 5: r5 = val
-                                    elif star == 4: r4 = val
-                                    elif star == 3: r3 = val
-                                    elif star == 2: r2 = val
-                                    elif star == 1: r1 = val
-                    except: pass
+                        reviews_tab = await page.query_selector('button[aria-label*="Reviews"], button:has-text("Reviews"), div[role="tab"]:has-text("Reviews")')
+                        if reviews_tab:
+                            await reviews_tab.click()
+                            await page.wait_for_timeout(2500) # Wait for histogram animation
+                            
+                            # Extract histogram data via JS
+                            histogram_data = await page.evaluate('''() => {
+                                let data = {5:0, 4:0, 3:0, 2:0, 1:0};
+                                let elements = document.querySelectorAll('[aria-label*="stars,"]');
+                                elements.forEach(el => {
+                                    let label = el.getAttribute('aria-label');
+                                    let match = label.match(/(\d)\s*stars?,\s*([\d,]+)\s*reviews?/i);
+                                    if(match) {
+                                        data[parseInt(match[1])] = parseInt(match[2].replace(/,/g, ''));
+                                    }
+                                });
+                                return data;
+                            }''')
+                            
+                            r5 = histogram_data.get('5', 0)
+                            r4 = histogram_data.get('4', 0)
+                            r3 = histogram_data.get('3', 0)
+                            r2 = histogram_data.get('2', 0)
+                            r1 = histogram_data.get('1', 0)
+                    except Exception as e:
+                        pass # If tab click fails, it stays 0
                         
                     # Phone
                     phone_el = await page.query_selector('button[data-item-id^="phone:"]')
@@ -257,16 +271,15 @@ async def scraper_worker(query, user_id, user_name, context):
                     web_el = await page.query_selector('a[data-item-id="authority"]')
                     website = await web_el.get_attribute('href') if web_el else "N/A"
                     
-                    # Email
                     email = await extract_email(website) if website != "N/A" else "N/A"
                     
-                    # Duplicate Check (Per User)
+                    # Duplicate Check
                     safe_key = re.sub(r'\D', '', phone) if phone != "N/A" else re.sub(r'[^a-zA-Z0-9]', '', name)
                     if not safe_key: safe_key = str(int(time.time()))
                     
                     if ref.child(safe_key).get(): continue
                         
-                    # Save to Firebase (ALL LEADS ARE SAVED NOW)
+                    # Save to Firebase
                     lead_data = {
                         'name': name, 
                         'rating': rating, 
@@ -297,7 +310,6 @@ async def scraper_worker(query, user_id, user_name, context):
     
     if user_id in active_tasks: del active_tasks[user_id]
     
-    # Final Success Message
     try:
         await context.bot.edit_message_text(
             chat_id=user_id, 
@@ -316,7 +328,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ আপনি এই বট ব্যবহারের জন্য অনুমোদিত নন। অ্যাডমিনের সাথে যোগাযোগ করুন।")
         return
 
-    keyboard =[[InlineKeyboardButton("🎯 টার্গেট সেট করুন (ক্যাটাগরি)", callback_data='set_target')],[InlineKeyboardButton("🚀 শুরু করুন", callback_data='start_scraping'), InlineKeyboardButton("🛑 বন্ধ করুন", callback_data='stop_scraping')],[InlineKeyboardButton("📊 আমার লিড চেক", callback_data='check_stats'), InlineKeyboardButton("📥 ডাউনলোড", callback_data='download_leads')]
+    keyboard = [[InlineKeyboardButton("🎯 টার্গেট সেট করুন (ক্যাটাগরি)", callback_data='set_target')],[InlineKeyboardButton("🚀 শুরু করুন", callback_data='start_scraping'), InlineKeyboardButton("🛑 বন্ধ করুন", callback_data='stop_scraping')],[InlineKeyboardButton("📊 আমার লিড চেক", callback_data='check_stats'), InlineKeyboardButton("📥 ডাউনলোড", callback_data='download_leads')]
     ]
     
     if is_super_admin(uid):
@@ -332,7 +344,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not is_authorized(uid): return
 
-    # --- Target Setting ---
     if query.data == 'set_target':
         keyboard = []
         row =[]
@@ -355,7 +366,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['awaiting_location'] = True
             await query.message.reply_text(f"✅ ক্যাটাগরি সিলেক্ট হয়েছে: **{selected_cat}**\n\n🌍 **এবার জায়গার নাম লিখে পাঠান:**\n(যেমন: `Dhaka` বা `New York`)", parse_mode='Markdown')
 
-    # --- Scraping Controls ---
     elif query.data == 'start_scraping':
         target = context.user_data.get('target_query')
         if not target:
@@ -389,7 +399,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         si = io.StringIO()
         cw = csv.writer(si)
-        # Updated CSV Header with Review Details
         cw.writerow(['Business Name', 'Rating', 'Total Reviews', '5-Star', '4-Star', '3-Star', '2-Star', '1-Star', 'Phone', 'Email', 'Website', 'Address', 'Query', 'Date'])
         for key, v in leads.items():
             cw.writerow([
@@ -402,11 +411,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         output.name = f"My_Leads_{datetime.now().strftime('%Y%m%d')}.csv"
         await context.bot.send_document(uid, output, caption=f"✅ আপনার মোট {len(leads)} টি লিড।")
 
-    # --- SUPER ADMIN PANEL ---
     elif query.data == 'super_admin_panel':
         if not is_super_admin(uid): return
-        btns = [
-            [InlineKeyboardButton("➕ ইউজার অ্যাড করুন", callback_data='sa_add_user')],[InlineKeyboardButton("➖ ইউজার রিমুভ করুন", callback_data='sa_remove_user_list')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও লিড", callback_data='sa_view_users')]
+        btns = [[InlineKeyboardButton("➕ ইউজার অ্যাড করুন", callback_data='sa_add_user')],[InlineKeyboardButton("➖ ইউজার রিমুভ করুন", callback_data='sa_remove_user_list')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও লিড", callback_data='sa_view_users')]
         ]
         await query.message.reply_text("👑 **Super Admin Control**\n(এখান থেকে আপনি ইউজার ও তাদের লিড কন্ট্রোল করতে পারবেন)", reply_markup=InlineKeyboardMarkup(btns))
         
@@ -431,7 +438,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_super_admin(uid): return
         target_uid = query.data.split('rm_usr_')[1]
         db.reference(f'bot_users/{target_uid}').delete()
-        await query.message.reply_text(f"✅ ইউজার `{target_uid}` কে সফলভাবে রিমুভ করা হয়েছে। সে আর বট ব্যবহার করতে পারবে না।")
+        await query.message.reply_text(f"✅ ইউজার `{target_uid}` কে সফলভাবে রিমুভ করা হয়েছে। সে আর বট ব্যবহার করতে পারবে কাশী।")
         await send_log(context, "Super Admin", uid, f"ইউজার রিমুভ করেছে: {target_uid}")
 
     elif query.data == 'sa_view_users':
