@@ -64,6 +64,18 @@ def is_authorized(uid):
     user = db.reference(f'bot_users/{uid}').get()
     return bool(user)
 
+# 🌟 MISSING FUNCTION ADDED HERE 🌟
+async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
+    """রেন্ডার সার্ভারকে ২৪ ঘণ্টা সজাগ রাখার জন্য পিং করবে"""
+    if not RENDER_URL: return
+    while True:
+        try:
+            requests.get(RENDER_URL, timeout=10)
+            logger.info("📡 Keep-alive ping sent.")
+        except Exception:
+            pass
+        await asyncio.sleep(600) # প্রতি ১০ মিনিট পর পর
+
 async def send_log(context, user_name, user_id, action):
     """টিমের কাজের লগ নির্দিষ্ট গ্রুপে পাঠাবে এবং এআই এর জন্য সেভ রাখবে"""
     log_text = f"👤 **{user_name}** (`{user_id}`)\n📌 অ্যাকশন: {action}\n🕒 সময়: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -333,6 +345,8 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     app = Application.builder().token(TOKEN).build()
+    
+    # 🌟 FIXED: keep_alive_task is now defined and called correctly
     app.job_queue.run_once(keep_alive_task, 5)
     
     app.add_handler(CommandHandler("start", start))
