@@ -70,7 +70,6 @@ def is_authorized(uid):
     return bool(user)
 
 async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
-    """রেন্ডার সার্ভারকে ২৪ ঘণ্টা সজাগ রাখার জন্য পিং করবে"""
     if not RENDER_URL: return
     while True:
         try:
@@ -79,12 +78,11 @@ async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
         await asyncio.sleep(600)
 
 async def analyze_with_ai(context, is_error=False):
-    """Groq AI দিয়ে স্বয়ংক্রিয়ভাবে লগ বিশ্লেষণ করে গ্রুপে রিপোর্ট দেবে"""
     if not GROQ_API_KEY or not LOG_GROUP_ID: return
     if not recent_logs: return
 
     logs_text = "\n".join(recent_logs)
-    recent_logs.clear() # Clear immediately to prevent duplicate triggers
+    recent_logs.clear()
     
     if is_error:
         prompt = (
@@ -120,20 +118,16 @@ async def analyze_with_ai(context, is_error=False):
         logger.error(f"AI Error: {e}")
 
 async def send_log(context, user_name, user_id, action):
-    """টিমের কাজের লগ নির্দিষ্ট গ্রুপে পাঠাবে এবং এআই এর জন্য সেভ রাখবে"""
     log_text = f"👤 **{user_name}** (`{user_id}`)\n📌 অ্যাকশন: {action}\n🕒 সময়: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     
-    # Send to Log Group
     if LOG_GROUP_ID:
         try:
             await context.bot.send_message(chat_id=LOG_GROUP_ID, text=log_text, parse_mode='Markdown')
         except Exception as e:
             logger.error(f"Log send error: {e}")
 
-    # Save to memory for Autonomous AI
     recent_logs.append(log_text)
     
-    # 🌟 AUTONOMOUS AI TRIGGER: এরর হলে সাথে সাথে, অথবা ১৫টি কাজের পর বিশ্লেষণ করবে
     if "এরর" in action or "Error" in action or "Executable doesn't exist" in action:
         asyncio.create_task(analyze_with_ai(context, is_error=True))
     elif len(recent_logs) >= 15:
@@ -146,7 +140,7 @@ async def extract_email(url):
                 if response.status == 200:
                     html = await response.text()
                     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', html)
-                    valid_emails =[e for e in emails if not any(x in e.lower() for x in['.png', '.jpg', 'sentry', 'example'])]
+                    valid_emails =[e for e in emails if not any(x in e.lower() for x in ['.png', '.jpg', 'sentry', 'example'])]
                     return valid_emails[0] if valid_emails else "N/A"
     except: pass
     return "N/A"
@@ -157,6 +151,13 @@ async def scraper_worker(query, user_id, user_name, context):
     ref = db.reference(f'gmaps_leads/{user_id}')
     leads_found = 0
 
+    # Send initial status message
+    status_msg = await context.bot.send_message(
+        chat_id=user_id, 
+        text=f"🚀 **{query}** এর জন্য ম্যাপে খোঁজা হচ্ছে...\nদয়া করে অপেক্ষা করুন।", 
+        parse_mode='Markdown'
+    )
+
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
@@ -166,11 +167,12 @@ async def scraper_worker(query, user_id, user_name, context):
             await page.goto(search_url, timeout=60000)
             await page.wait_for_timeout(5000)
             
+            # Scroll to load all places
             scrollable_div = await page.query_selector('div[role="feed"]')
             if scrollable_div:
-                for _ in range(5):
-                    if user_id not in active_tasks: break # Stopped
-                    await page.evaluate('(element) => element.scrollBy(0, 2000)', scrollable_div)
+                for _ in range(6):
+                    if user_id not in active_tasks: break
+                    await page.evaluate('(element) => element.scrollBy(0, 3000)', scrollable_div)
                     await page.wait_for_timeout(2000)
             
             places = await page.query_selector_all('a[href*="/maps/place/"]')
@@ -179,34 +181,83 @@ async def scraper_worker(query, user_id, user_name, context):
                 url = await place.get_attribute('href')
                 if url and url not in place_urls: place_urls.append(url)
             
-            await context.bot.send_message(user_id, f"🔍 **{len(place_urls)}** টি বিজনেস পাওয়া গেছে। ফিল্টার করা হচ্ছে...")
+            total_places = len(place_urls)
+            await context.bot.edit_message_text(
+                chat_id=user_id, 
+                message_id=status_msg.message_id,
+                text=f"🔍 **{total_places}** টি বিজনেস পাওয়া গেছে।\nএখন একটি একটি করে ডেটা সেভ করা হচ্ছে...",
+                parse_mode='Markdown'
+            )
 
-            for url in place_urls:
-                if user_id not in active_tasks: break # Stopped
+            # Extract Data
+            for idx, url in enumerate(place_urls):
+                if user_id not in active_tasks: break
+                
+                # 🌟 LIVE UPDATE: Update Telegram message every 3 items to avoid flood limits
+                if idx % 3 == 0 or idx == 0:
+                    try:
+                        await context.bot.edit_message_text(
+                            chat_id=user_id,
+                            message_id=status_msg.message_id,
+                            text=f"⏳ **লাইভ স্ক্র্যাপিং চলছে...**\n\n🎯 টার্গেট: `{query}`\n🔍 মোট পাওয়া গেছে: **{total_places}** টি\n🔄 চেক করা হয়েছে: **{idx}** টি\n✅ সেভ হয়েছে: **{leads_found}** টি লিড",
+                            parse_mode='Markdown'
+                        )
+                    except: pass
+
                 try:
                     await page.goto(url, timeout=30000)
                     await page.wait_for_timeout(2000)
                     
+                    # Name
                     name_el = await page.query_selector('h1')
                     name = await name_el.inner_text() if name_el else "Unknown"
                     
-                    rating_el = await page.query_selector('div[aria-label*="stars"]')
-                    rating_text = await rating_el.get_attribute('aria-label') if rating_el else ""
+                    # Rating & Total Reviews
                     rating = 0.0
-                    if rating_text:
-                        match = re.search(r'([\d\.]+)\s*stars', rating_text)
-                        if match: rating = float(match.group(1))
+                    total_reviews = 0
+                    rating_el = await page.query_selector('div[aria-label*="stars"]')
+                    if rating_el:
+                        rating_text = await rating_el.get_attribute('aria-label')
+                        if rating_text:
+                            # Example: "4.5 stars 1,069 Reviews"
+                            r_match = re.search(r'([\d\.]+)\s*stars', rating_text)
+                            if r_match: rating = float(r_match.group(1))
+                            
+                            rev_match = re.search(r'([\d,]+)\s*Reviews?', rating_text, re.IGNORECASE)
+                            if rev_match: total_reviews = int(rev_match.group(1).replace(',', ''))
                     
-                    # Bad Rating Filter
-                    if rating == 0.0 or rating > 4.0: continue
+                    # Histogram (1 to 5 stars) - Try to extract if visible in DOM
+                    r5 = r4 = r3 = r2 = r1 = 0
+                    try:
+                        for star in range(5, 0, -1):
+                            star_row = await page.query_selector(f'tr[aria-label*="{star} stars,"]')
+                            if star_row:
+                                label = await star_row.get_attribute('aria-label')
+                                s_match = re.search(r'(\d+)\s*reviews?', label, re.IGNORECASE)
+                                if s_match:
+                                    val = int(s_match.group(1))
+                                    if star == 5: r5 = val
+                                    elif star == 4: r4 = val
+                                    elif star == 3: r3 = val
+                                    elif star == 2: r2 = val
+                                    elif star == 1: r1 = val
+                    except: pass
                         
+                    # Phone
                     phone_el = await page.query_selector('button[data-item-id^="phone:"]')
                     phone = await phone_el.get_attribute('aria-label') if phone_el else "N/A"
                     if phone != "N/A": phone = phone.replace("Phone:", "").strip()
                     
+                    # Address
+                    addr_el = await page.query_selector('button[data-item-id="address"]')
+                    address = await addr_el.get_attribute('aria-label') if addr_el else "N/A"
+                    if address != "N/A": address = address.replace("Address:", "").strip()
+                    
+                    # Website
                     web_el = await page.query_selector('a[data-item-id="authority"]')
                     website = await web_el.get_attribute('href') if web_el else "N/A"
                     
+                    # Email
                     email = await extract_email(website) if website != "N/A" else "N/A"
                     
                     # Duplicate Check (Per User)
@@ -215,26 +266,47 @@ async def scraper_worker(query, user_id, user_name, context):
                     
                     if ref.child(safe_key).get(): continue
                         
+                    # Save to Firebase (ALL LEADS ARE SAVED NOW)
                     lead_data = {
-                        'name': name, 'rating': rating, 'phone': phone, 
-                        'email': email, 'website': website, 'query': query, 
+                        'name': name, 
+                        'rating': rating, 
+                        'total_reviews': total_reviews,
+                        'stars_5': r5, 'stars_4': r4, 'stars_3': r3, 'stars_2': r2, 'stars_1': r1,
+                        'phone': phone, 
+                        'email': email, 
+                        'website': website, 
+                        'address': address,
+                        'query': query, 
                         'date': datetime.now().isoformat()
                     }
                     ref.child(safe_key).set(lead_data)
                     leads_found += 1
-                except: continue
+                except Exception as inner_e:
+                    continue
             
             await browser.close()
             
     except Exception as e:
         error_msg = str(e)
         await send_log(context, user_name, user_id, f"❌ স্ক্র্যাপিং এরর খেয়েছে:\n`{error_msg[:200]}`")
-        await context.bot.send_message(user_id, f"❌ স্ক্র্যাপিং এরর: দয়া করে কিছুক্ষণ পর আবার চেষ্টা করুন।")
+        try:
+            await context.bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"❌ স্ক্র্যাপিং এরর: দয়া করে আবার চেষ্টা করুন।")
+        except: pass
         if user_id in active_tasks: del active_tasks[user_id]
-        return # Stop execution here
+        return
     
     if user_id in active_tasks: del active_tasks[user_id]
-    await context.bot.send_message(user_id, f"✅ **স্ক্র্যাপিং সম্পন্ন!**\nনতুন লিড: **{leads_found}** টি।")
+    
+    # Final Success Message
+    try:
+        await context.bot.edit_message_text(
+            chat_id=user_id, 
+            message_id=status_msg.message_id, 
+            text=f"✅ **স্ক্র্যাপিং সফলভাবে সম্পন্ন হয়েছে!**\n\n🎯 টার্গেট: `{query}`\n🔍 মোট চেক করা হয়েছে: **{total_places}** টি\n📥 নতুন লিড সেভ হয়েছে: **{leads_found}** টি।\n\nএখন '📥 ডাউনলোড' বাটনে ক্লিক করে এক্সেল ফাইলটি নিয়ে নিন।",
+            parse_mode='Markdown'
+        )
+    except: pass
+    
     await send_log(context, user_name, user_id, f"স্ক্র্যাপিং শেষ করেছে। নতুন লিড: {leads_found}")
 
 # --- Handlers ---
@@ -260,16 +332,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not is_authorized(uid): return
 
-    # --- Target Setting (Category -> Location) ---
+    # --- Target Setting ---
     if query.data == 'set_target':
-        # Show Categories
-        keyboard =[]
+        keyboard = []
         row =[]
         for i, cat in enumerate(CATEGORIES):
             row.append(InlineKeyboardButton(cat, callback_data=f'cat_{cat}'))
             if len(row) == 2 or i == len(CATEGORIES) - 1:
                 keyboard.append(row)
-                row =[]
+                row = []
         keyboard.append([InlineKeyboardButton("✍️ কাস্টম ক্যাটাগরি লিখব", callback_data='cat_custom')])
         
         await query.message.reply_text("📂 **প্রথমে একটি ক্যাটাগরি সিলেক্ট করুন:**", reply_markup=InlineKeyboardMarkup(keyboard))
@@ -296,7 +367,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         task = asyncio.create_task(scraper_worker(target, uid, uname, context))
         active_tasks[uid] = task
-        await query.edit_message_text(f"🚀 **{target}** এর জন্য স্ক্র্যাপিং শুরু হচ্ছে...")
         
     elif query.data == 'stop_scraping':
         if uid in active_tasks:
@@ -319,18 +389,24 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         si = io.StringIO()
         cw = csv.writer(si)
-        cw.writerow(['Business Name', 'Rating', 'Phone', 'Email', 'Website', 'Query', 'Date'])
+        # Updated CSV Header with Review Details
+        cw.writerow(['Business Name', 'Rating', 'Total Reviews', '5-Star', '4-Star', '3-Star', '2-Star', '1-Star', 'Phone', 'Email', 'Website', 'Address', 'Query', 'Date'])
         for key, v in leads.items():
-            cw.writerow([v.get('name',''), v.get('rating',''), v.get('phone',''), v.get('email',''), v.get('website',''), v.get('query',''), v.get('date','')])
+            cw.writerow([
+                v.get('name',''), v.get('rating',''), v.get('total_reviews',''),
+                v.get('stars_5',''), v.get('stars_4',''), v.get('stars_3',''), v.get('stars_2',''), v.get('stars_1',''),
+                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('address',''), v.get('query',''), v.get('date','')
+            ])
             
         output = io.BytesIO(si.getvalue().encode('utf-8'))
         output.name = f"My_Leads_{datetime.now().strftime('%Y%m%d')}.csv"
         await context.bot.send_document(uid, output, caption=f"✅ আপনার মোট {len(leads)} টি লিড।")
 
-    # --- SUPER ADMIN PANEL (Button Based) ---
+    # --- SUPER ADMIN PANEL ---
     elif query.data == 'super_admin_panel':
         if not is_super_admin(uid): return
-        btns = [[InlineKeyboardButton("➕ ইউজার অ্যাড করুন", callback_data='sa_add_user')],[InlineKeyboardButton("➖ ইউজার রিমুভ করুন", callback_data='sa_remove_user_list')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও লিড", callback_data='sa_view_users')]
+        btns = [
+            [InlineKeyboardButton("➕ ইউজার অ্যাড করুন", callback_data='sa_add_user')],[InlineKeyboardButton("➖ ইউজার রিমুভ করুন", callback_data='sa_remove_user_list')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও লিড", callback_data='sa_view_users')]
         ]
         await query.message.reply_text("👑 **Super Admin Control**\n(এখান থেকে আপনি ইউজার ও তাদের লিড কন্ট্রোল করতে পারবেন)", reply_markup=InlineKeyboardMarkup(btns))
         
@@ -381,7 +457,6 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     text = update.message.text.strip()
     
-    # --- Super Admin Adding User ---
     if context.user_data.get('awaiting_new_user_data') and is_super_admin(uid):
         parts = text.split(maxsplit=1)
         if len(parts) >= 1:
@@ -395,7 +470,6 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not is_authorized(uid): return
     
-    # --- Target Setting Logic ---
     if context.user_data.get('awaiting_custom_cat'):
         context.user_data['selected_category'] = text
         context.user_data['awaiting_custom_cat'] = False
@@ -406,8 +480,6 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('awaiting_location'):
         location = text
         category = context.user_data.get('selected_category', 'Businesses')
-        
-        # Combine Category and Location
         context.user_data['target_query'] = f"{category} in {location}"
         context.user_data['awaiting_location'] = False
         
