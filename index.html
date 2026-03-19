@@ -8,237 +8,313 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #01875f;
-            --danger-color: #d32f2f;
-            --bg-color: #f4f7f6;
-            --card-bg: #ffffff;
-            --text-main: #202124;
-            --text-muted: #5f6368;
+            --primary: #01875f; --danger: #d32f2f; --bg: #f4f7f6;
+            --card: #ffffff; --text: #202124; --muted: #5f6368;
         }
         body {
-            font-family: 'Poppins', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0; padding: 15px;
-            padding-bottom: 80px; /* Space for bottom button */
+            font-family: 'Poppins', sans-serif; background: var(--bg);
+            color: var(--text); margin: 0; padding: 15px; padding-bottom: 80px;
         }
-        /* --- Profile Section --- */
-        .profile-card {
-            background: var(--card-bg);
-            border-radius: 16px; padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
-            text-align: center; margin-bottom: 20px;
+        .card {
+            background: var(--card); border-radius: 16px; padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 20px;
         }
-        .profile-card h2 { margin: 0; font-size: 22px; color: var(--primary-color); }
-        .profile-card p { margin: 5px 0 15px 0; font-size: 13px; color: var(--text-muted); }
+        h2 { margin: 0 0 5px 0; color: var(--primary); font-size: 22px; }
+        .grid-2 { display: flex; gap: 10px; margin-top: 15px; }
+        .box { background: #f8f9fa; flex: 1; padding: 15px 10px; border-radius: 12px; border: 1px solid #e8eaed; text-align: center; }
+        .box h3 { margin: 0; font-size: 22px; color: var(--text); }
+        .box span { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
         
-        .stats-container {
-            display: flex; justify-content: space-between; gap: 10px;
+        /* Timer */
+        .timer-card { background: linear-gradient(135deg, #fff0f0, #ffebee); border: 2px solid #ffcdd2; text-align: center; }
+        .timer-title { font-size: 12px; font-weight: 700; color: var(--danger); text-transform: uppercase; margin-bottom: 10px; }
+        .time-box { background: var(--card); border-radius: 8px; width: 60px; padding: 10px 0; display: inline-block; margin: 0 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .time-box .num { font-size: 22px; font-weight: 700; color: var(--danger); }
+        .time-box .label { font-size: 10px; color: var(--muted); font-weight: 600; display: block; }
+        
+        /* Buttons */
+        .btn {
+            width: 100%; padding: 14px; border-radius: 12px; border: none;
+            font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .stat-box {
-            background: #f8f9fa; flex: 1; padding: 15px 10px;
-            border-radius: 12px; border: 1px solid #e8eaed;
-        }
-        .stat-box h3 { margin: 0; font-size: 24px; color: var(--text-main); }
-        .stat-box span { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; }
-
-        /* --- Timer Section --- */
-        .timer-card {
-            background: linear-gradient(135deg, #fff0f0 0%, #ffebee 100%);
-            border: 2px solid #ffcdd2; border-radius: 16px;
-            padding: 20px; text-align: center; margin-bottom: 25px;
-            box-shadow: 0 4px 15px rgba(211, 47, 47, 0.1);
-        }
-        .timer-title { font-size: 12px; font-weight: 700; color: var(--danger-color); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
-        .countdown { display: flex; justify-content: center; gap: 10px; }
-        .time-box { background: var(--card-bg); border-radius: 8px; width: 60px; padding: 10px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .time-box .num { display: block; font-size: 24px; font-weight: 700; color: var(--danger-color); line-height: 1; }
-        .time-box .label { font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-top: 5px; display: block; }
-        .expired-msg { font-size: 18px; font-weight: 700; color: var(--danger-color); display: none; }
-
-        /* --- Pricing Section --- */
-        .section-title { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 15px; color: var(--text-main); }
-        .pricing-card {
-            background: var(--card-bg); border-radius: 16px; padding: 20px;
-            margin-bottom: 15px; border: 1px solid #e8eaed;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03); position: relative;
-            overflow: hidden;
-        }
-        .pricing-card.premium { border: 2px solid var(--primary-color); }
-        .badge {
-            position: absolute; top: 12px; right: -25px; background: var(--primary-color);
-            color: white; font-size: 10px; font-weight: bold; padding: 4px 30px;
-            transform: rotate(45deg); text-transform: uppercase;
-        }
-        .plan-name { font-size: 16px; font-weight: 700; margin: 0 0 5px 0; }
-        .plan-price { font-size: 24px; font-weight: 700; color: var(--primary-color); margin: 0 0 10px 0; }
-        .plan-desc { font-size: 12px; color: var(--text-muted); margin: 0; }
-
-        /* --- Payment Section --- */
-        .payment-card {
-            background: var(--card-bg); border-radius: 16px; padding: 20px;
-            margin-bottom: 20px; border: 1px solid #e8eaed;
-        }
-        .pay-method {
-            display: flex; justify-content: space-between; align-items: center;
-            background: #f8f9fa; padding: 12px 15px; border-radius: 10px; margin-bottom: 10px;
-        }
-        .pay-method span { font-size: 15px; font-weight: 600; }
-        .copy-btn {
-            background: #e8f0fe; color: #1a73e8; border: none; padding: 6px 15px;
-            border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
-        }
-        .copy-btn:active { background: #d2e3fc; }
-
-        /* --- Floating Action Button --- */
-        .submit-btn {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 400px; background: var(--primary-color); color: white;
-            border: none; padding: 15px; border-radius: 30px; font-size: 16px;
-            font-weight: 700; box-shadow: 0 4px 15px rgba(1, 135, 95, 0.4);
-            cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
-        }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(1, 135, 95, 0.3); }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-danger { background: var(--danger); color: white; }
+        
+        /* Packages */
+        #packages-section { display: none; }
+        .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; }
+        .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; }
+        .pkg-price { font-size: 20px; font-weight: 700; color: var(--primary); margin: 5px 0; }
+        
+        /* Admin Panel */
+        #admin-section { display: none; }
+        .admin-header { background: #202124; color: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
+        
+        /* Modals/Forms */
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <!-- 1. Profile & Stats -->
-    <div class="profile-card">
-        <h2 id="userName">User Profile</h2>
-        <p>User ID: <span id="userId" style="font-weight:bold; color:#333;">...</span></p>
-        
-        <div class="stats-container">
-            <div class="stat-box">
-                <h3 id="ltSearches">0</h3>
-                <span>Total Searches</span>
+    <!-- Language Toggle (Auto detected, but manual option provided) -->
+    <div style="text-align: right; margin-bottom: 10px;">
+        <span id="lang-indicator" style="font-size: 12px; font-weight: bold; color: var(--muted);">🌐 Auto Lang</span>
+    </div>
+
+    <!-- ================= USER DASHBOARD ================= -->
+    <div id="user-section">
+        <div class="card profile-card">
+            <h2 id="u-greeting">Hello, User</h2>
+            <p id="u-id-text">ID: 00000000</p>
+            
+            <div class="grid-2">
+                <div class="box"><h3 id="u-searches">0</h3><span id="t-searches">Searches</span></div>
+                <div class="box"><h3 id="u-leads">0</h3><span id="t-leads">Leads</span></div>
             </div>
-            <div class="stat-box">
-                <h3 id="ltLeads">0</h3>
-                <span>Total Leads</span>
+            
+            <!-- Team Info (Hidden if not a team leader) -->
+            <div id="team-info" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--primary);" id="t-team-limit">Team Members: 0 / 0</span>
+            </div>
+        </div>
+
+        <div class="card timer-card" id="timer-container">
+            <div class="timer-title" id="t-time-left">Subscription Time Left</div>
+            <div id="countdown">
+                <div class="time-box"><span class="num" id="t-days">00</span><span class="label" id="l-days">Days</span></div>
+                <div class="time-box"><span class="num" id="t-hours">00</span><span class="label" id="l-hours">Hrs</span></div>
+                <div class="time-box"><span class="num" id="t-mins">00</span><span class="label" id="l-mins">Min</span></div>
+            </div>
+            <div id="expired-msg" style="display:none; font-size: 18px; font-weight: bold; color: var(--danger);"></div>
+        </div>
+
+        <!-- Action Buttons -->
+        <button class="btn btn-primary" onclick="showScrapeForm()" id="btn-scrape">🚀 Start Scraping</button>
+        <button class="btn btn-outline" onclick="togglePackages()" id="btn-sub">💎 Subscription & Packages</button>
+
+        <!-- Scraping Form (Hidden by default) -->
+        <div class="card" id="scrape-form" style="display: none;">
+            <h3 style="margin-top:0;" id="t-scrape-title">New Search</h3>
+            <div class="form-group">
+                <label id="t-cat">Category</label>
+                <select id="cat-select">
+                    <option value="Restaurants">Restaurants</option>
+                    <option value="IT Companies">IT Companies</option>
+                    <option value="Hospitals">Hospitals</option>
+                    <option value="Real Estate">Real Estate</option>
+                    <option value="Plumbers">Plumbers</option>
+                    <option value="Custom">Custom (Type below)</option>
+                </select>
+            </div>
+            <div class="form-group" id="custom-cat-group" style="display: none;">
+                <input type="text" id="custom-cat" placeholder="e.g. Car Wash">
+            </div>
+            <div class="form-group">
+                <label id="t-loc">Location</label>
+                <input type="text" id="loc-input" placeholder="e.g. Dhaka, New York">
+            </div>
+            <button class="btn btn-primary" onclick="sendScrapeData()" id="btn-start-now">Start Now</button>
+            <button class="btn btn-outline" onclick="hideScrapeForm()" id="btn-cancel">Cancel</button>
+        </div>
+
+        <!-- Packages Section (Hidden by default) -->
+        <div id="packages-section">
+            <h3 style="text-align: center;" id="t-pkg-title">Premium Packages</h3>
+            <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Click a package to send a request to Admin.</p>
+            
+            <div class="pkg-card" onclick="buyPackage('1 Month (Basic)', '500 BDT')">
+                <strong id="p1-title">🥉 1 Month (Basic)</strong>
+                <div class="pkg-price">500 BDT</div>
+            </div>
+            <div class="pkg-card" onclick="buyPackage('3 Months (Standard)', '1350 BDT')">
+                <strong id="p2-title">🥈 3 Months (Standard)</strong>
+                <div class="pkg-price">1350 BDT</div>
+            </div>
+            <div class="pkg-card premium" onclick="buyPackage('6 Months (Premium)', '2500 BDT')">
+                <strong id="p3-title">🥇 6 Months (Premium)</strong>
+                <div class="pkg-price">2500 BDT</div>
+            </div>
+            
+            <div class="card" style="background: #f8f9fa;">
+                <strong id="t-pay-methods">Payment Methods:</strong><br>
+                <span style="font-size: 13px;">✅ Bkash: <b id="pay-bkash">01757481646</b></span><br>
+                <span style="font-size: 13px;">✅ Nagad: <b id="pay-nagad">01757481646</b></span>
             </div>
         </div>
     </div>
 
-    <!-- 2. VIP Red Countdown Timer -->
-    <div class="timer-card">
-        <div class="timer-title">Subscription Time Left</div>
-        <div class="countdown" id="timerBox">
-            <div class="time-box"><span class="num" id="t-days">00</span><span class="label">Days</span></div>
-            <div class="time-box"><span class="num" id="t-hours">00</span><span class="label">Hours</span></div>
-            <div class="time-box"><span class="num" id="t-mins">00</span><span class="label">Mins</span></div>
-            <div class="time-box"><span class="num" id="t-secs">00</span><span class="label">Secs</span></div>
+    <!-- ================= ADMIN DASHBOARD ================= -->
+    <div id="admin-section">
+        <div class="admin-header">
+            <h2>👑 Super Admin</h2>
+            <p style="margin:0; font-size: 12px; color:#ccc;">Control Panel</p>
         </div>
-        <div class="expired-msg" id="expiredMsg">⚠️ ACCOUNT EXPIRED!</div>
-    </div>
 
-    <!-- 3. Packages Section -->
-    <div class="section-title">💎 Subscription Packages</div>
-    
-    <div class="pricing-card">
-        <h3 class="plan-name">🥉 1 Month (Basic Plan)</h3>
-        <p class="plan-price">500 BDT</p>
-        <p class="plan-desc">Google Maps থেকে আনলিমিটেড B2B লিড (ইমেইল, ফোন, রেটিং) কালেক্ট করুন।</p>
-    </div>
-
-    <div class="pricing-card">
-        <h3 class="plan-name">🥈 3 Months (Standard Plan)</h3>
-        <p class="plan-price">1350 BDT <span style="font-size:12px; color:#d32f2f; text-decoration:line-through;">1500 BDT</span></p>
-        <p class="plan-desc">১০% ছাড়! নিরবচ্ছিন্নভাবে ৩ মাস লিড কালেক্ট করুন।</p>
-    </div>
-
-    <div class="pricing-card premium">
-        <div class="badge">Best Value</div>
-        <h3 class="plan-name">🥇 6 Months (Premium Plan)</h3>
-        <p class="plan-price">2500 BDT <span style="font-size:12px; color:#d32f2f; text-decoration:line-through;">3000 BDT</span></p>
-        <p class="plan-desc">সর্বোচ্চ ছাড়! প্রফেশনাল মার্কেটারদের জন্য বেস্ট প্যাকেজ।</p>
-    </div>
-
-    <!-- 4. Payment Section -->
-    <div class="section-title">💳 Payment Methods (Personal)</div>
-    <div class="payment-card">
-        <p style="font-size: 12px; color: var(--text-muted); margin-top: 0;">নিচের নাম্বারে Send Money করে স্ক্রিনশট এবং আপনার User ID অ্যাডমিনকে পাঠান।</p>
-        
-        <div class="pay-method">
-            <span>✅ বিকাশ</span>
-            <span style="font-family: monospace; font-size: 16px;">01757481646</span>
-            <button class="copy-btn" onclick="copyNumber('01757481646')">Copy</button>
+        <div class="card">
+            <button class="btn btn-primary" onclick="sendAdminCmd('add_user')">➕ Add User (24h Trial)</button>
+            <button class="btn btn-primary" onclick="sendAdminCmd('add_team_leader')">👥 Add Team Leader</button>
+            <button class="btn btn-outline" onclick="sendAdminCmd('manage_users')">⚙️ Manage Users & Time</button>
+            <button class="btn btn-outline" onclick="sendAdminCmd('edit_packages')">📝 Edit Packages</button>
+            <button class="btn btn-danger" onclick="sendAdminCmd('toggle_bot_buttons')">👁️ Toggle Bot Buttons (Hide/Show)</button>
         </div>
-        
-        <div class="pay-method">
-            <span>✅ নগদ</span>
-            <span style="font-family: monospace; font-size: 16px;">01757481646</span>
-            <button class="copy-btn" onclick="copyNumber('01757481646')">Copy</button>
-        </div>
-        <p style="font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 0;">(Binance বা Crypto তে পেমেন্ট করতে চাইলে ইনবক্সে যোগাযোগ করুন)</p>
     </div>
-
-    <!-- 5. Submit Button (Fixed at bottom) -->
-    <button class="submit-btn" onclick="contactAdmin()">Submit Payment Info 🚀</button>
 
     <script>
-        // Initialize Telegram Web App
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Open in full screen
+        tg.expand();
 
-        // Parse URL Parameters passed from Python Bot
+        // --- Translations Dictionary ---
+        const dict = {
+            en: {
+                greeting: "Hello,", searches: "Searches", leads: "Leads",
+                timeLeft: "Subscription Time Left", days: "Days", hrs: "Hrs", mins: "Min",
+                expired: "⚠️ ACCOUNT EXPIRED!", btnScrape: "🚀 Start Scraping", btnSub: "💎 Subscription & Packages",
+                scrapeTitle: "New Search", cat: "Category", loc: "Location", startNow: "Start Now", cancel: "Cancel",
+                pkgTitle: "Premium Packages", pkgDesc: "Click a package to send a request to Admin.",
+                payMethods: "Payment Methods:"
+            },
+            bn: {
+                greeting: "স্বাগতম,", searches: "সার্চ", leads: "লিড",
+                timeLeft: "সাবস্ক্রিপশনের মেয়াদ আছে", days: "দিন", hrs: "ঘণ্টা", mins: "মিনিট",
+                expired: "⚠️ আপনার মেয়াদ শেষ হয়ে গেছে!", btnScrape: "🚀 স্ক্র্যাপিং শুরু করুন", btnSub: "💎 সাবস্ক্রিপশন ও প্যাকেজ",
+                scrapeTitle: "নতুন সার্চ", cat: "ক্যাটাগরি", loc: "লোকেশন (জায়গার নাম)", startNow: "শুরু করুন", cancel: "বাতিল",
+                pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "প্যাকেজ কিনতে ক্লিক করুন, অ্যাডমিনের কাছে মেসেজ চলে যাবে।",
+                payMethods: "পেমেন্ট মাধ্যম:"
+            }
+        };
+
+        // --- Logic & URL Params ---
         const urlParams = new URLSearchParams(window.location.search);
-        const uid = urlParams.get('uid') || 'Unknown';
-        const uName = urlParams.get('name') || 'Developer';
-        const ltSearches = urlParams.get('searches') || '0';
-        const ltLeads = urlParams.get('leads') || '0';
+        const uid = urlParams.get('uid') || '000';
+        const uName = decodeURIComponent(urlParams.get('name') || 'User');
+        const role = urlParams.get('role') || 'user'; // 'admin' or 'user'
         const endsAtStr = urlParams.get('ends');
+        const teamLimit = parseInt(urlParams.get('team_limit') || '0');
+        const teamAdded = parseInt(urlParams.get('team_added') || '0');
 
-        // Set Profile Data
-        document.getElementById('userName').innerText = decodeURIComponent(uName);
-        document.getElementById('userId').innerText = uid;
-        document.getElementById('ltSearches').innerText = ltSearches;
-        document.getElementById('ltLeads').innerText = ltLeads;
+        // Detect Language
+        let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
+        document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
+        applyLanguage(userLang);
 
-        // Copy Function
-        function copyNumber(num) {
-            navigator.clipboard.writeText(num).then(() => {
-                tg.showAlert("Number Copied: " + num);
-            });
-        }
-
-        // Contact Admin Function
-        function contactAdmin() {
-            // Opens Telegram chat with you automatically
-            tg.openTelegramLink("https://t.me/AfMdshakil");
-        }
-
-        // --- VIP Red Timer Logic ---
-        const timerBox = document.getElementById('timerBox');
-        const expiredMsg = document.getElementById('expiredMsg');
-
-        if (endsAtStr === 'expired') {
-            timerBox.style.display = 'none';
-            expiredMsg.style.display = 'block';
-        } else if (endsAtStr && endsAtStr !== 'N/A') {
-            const endsAt = new Date(endsAtStr).getTime();
-            
-            const x = setInterval(function() {
-                const now = new Date().getTime();
-                const distance = endsAt - now;
-
-                if (distance < 0) {
-                    clearInterval(x);
-                    timerBox.style.display = 'none';
-                    expiredMsg.style.display = 'block';
-                    return;
-                }
-
-                document.getElementById('t-days').innerText = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0');
-                document.getElementById('t-hours').innerText = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
-                document.getElementById('t-mins').innerText = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
-                document.getElementById('t-secs').innerText = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
-            }, 1000);
+        // Render UI based on Role
+        if (role === 'admin') {
+            document.getElementById('user-section').style.display = 'none';
+            document.getElementById('admin-section').style.display = 'block';
         } else {
-            // Super Admin or Lifetime
-            document.getElementById('t-days').innerText = "∞";
-            document.getElementById('t-hours').innerText = "∞";
-            document.getElementById('t-mins').innerText = "∞";
-            document.getElementById('t-secs').innerText = "∞";
+            document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
+            document.getElementById('u-id-text').innerText = "ID: " + uid;
+            document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
+            document.getElementById('u-leads').innerText = urlParams.get('leads') || '0';
+
+            if (teamLimit > 0) {
+                document.getElementById('team-info').style.display = 'block';
+                document.getElementById('t-team-limit').innerText = userLang === 'bn' ? 
+                    `আপনার টিম মেম্বার: ${teamAdded} / ${teamLimit}` : `Team Members: ${teamAdded} / ${teamLimit}`;
+            }
+
+            startTimer(endsAtStr, userLang);
+        }
+
+        // --- Functions ---
+        function applyLanguage(l) {
+            document.getElementById('t-searches').innerText = dict[l].searches;
+            document.getElementById('t-leads').innerText = dict[l].leads;
+            document.getElementById('t-time-left').innerText = dict[l].timeLeft;
+            document.getElementById('l-days').innerText = dict[l].days;
+            document.getElementById('l-hours').innerText = dict[l].hrs;
+            document.getElementById('l-mins').innerText = dict[l].mins;
+            document.getElementById('expired-msg').innerText = dict[l].expired;
+            document.getElementById('btn-scrape').innerText = dict[l].btnScrape;
+            document.getElementById('btn-sub').innerText = dict[l].btnSub;
+            document.getElementById('t-scrape-title').innerText = dict[l].scrapeTitle;
+            document.getElementById('t-cat').innerText = dict[l].cat;
+            document.getElementById('t-loc').innerText = dict[l].loc;
+            document.getElementById('btn-start-now').innerText = dict[l].startNow;
+            document.getElementById('btn-cancel').innerText = dict[l].cancel;
+            document.getElementById('t-pkg-title').innerText = dict[l].pkgTitle;
+            document.getElementById('t-pkg-desc').innerText = dict[l].pkgDesc;
+            document.getElementById('t-pay-methods').innerText = dict[l].payMethods;
+        }
+
+        function startTimer(ends, l) {
+            if (ends === 'expired') {
+                document.getElementById('countdown').style.display = 'none';
+                document.getElementById('expired-msg').style.display = 'block';
+                document.getElementById('btn-scrape').style.display = 'none'; // Hide scrape if expired
+            } else if (ends && ends !== 'N/A') {
+                const endsAt = new Date(ends).getTime();
+                setInterval(() => {
+                    const distance = endsAt - new Date().getTime();
+                    if (distance < 0) {
+                        document.getElementById('countdown').style.display = 'none';
+                        document.getElementById('expired-msg').style.display = 'block';
+                        document.getElementById('btn-scrape').style.display = 'none';
+                        return;
+                    }
+                    document.getElementById('t-days').innerText = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0');
+                    document.getElementById('t-hours').innerText = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
+                    document.getElementById('t-mins').innerText = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+                }, 1000);
+            } else {
+                document.getElementById('t-days').innerText = "∞";
+                document.getElementById('t-hours').innerText = "∞";
+                document.getElementById('t-mins').innerText = "∞";
+            }
+        }
+
+        function togglePackages() {
+            const p = document.getElementById('packages-section');
+            p.style.display = p.style.display === 'none' || p.style.display === '' ? 'block' : 'none';
+        }
+
+        function buyPackage(plan, price) {
+            let text = userLang === 'bn' ? 
+                `অ্যাডমিন, আমি ${plan} প্যাকেজটি ${price} দিয়ে কিনতে চাই।\nআমার UID: ${uid}` : 
+                `Hello Admin, I want to buy the ${plan} package for ${price}.\nMy UID: ${uid}`;
+            tg.openTelegramLink(`https://t.me/AfMdshakil?text=${encodeURIComponent(text)}`);
+        }
+
+        // Scraping Form Logic
+        document.getElementById('cat-select').addEventListener('change', function() {
+            document.getElementById('custom-cat-group').style.display = this.value === 'Custom' ? 'block' : 'none';
+        });
+
+        function showScrapeForm() {
+            document.getElementById('scrape-form').style.display = 'block';
+            document.getElementById('btn-scrape').style.display = 'none';
+            document.getElementById('btn-sub').style.display = 'none';
+        }
+
+        function hideScrapeForm() {
+            document.getElementById('scrape-form').style.display = 'none';
+            document.getElementById('btn-scrape').style.display = 'flex';
+            document.getElementById('btn-sub').style.display = 'flex';
+        }
+
+        function sendScrapeData() {
+            let cat = document.getElementById('cat-select').value;
+            if (cat === 'Custom') cat = document.getElementById('custom-cat').value;
+            let loc = document.getElementById('loc-input').value;
+            
+            if (!cat || !loc) {
+                tg.showAlert(userLang === 'bn' ? "ক্যাটাগরি এবং লোকেশন দিন!" : "Provide Category and Location!");
+                return;
+            }
+            
+            let query = `${cat} in ${loc}`;
+            // Send data back to Python Bot
+            tg.sendData(JSON.stringify({ action: 'start_scrape', query: query }));
+            tg.close(); // Close Web App
+        }
+
+        function sendAdminCmd(cmd) {
+            tg.sendData(JSON.stringify({ action: 'admin_cmd', cmd: cmd }));
+            tg.close();
         }
     </script>
 </body>
