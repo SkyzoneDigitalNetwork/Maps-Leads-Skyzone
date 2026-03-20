@@ -13,7 +13,7 @@
         }
         body {
             font-family: 'Poppins', sans-serif; background: var(--bg);
-            color: var(--text); margin: 0; padding: 15px; padding-bottom: 80px;
+            color: var(--text); margin: 0; padding: 15px; padding-bottom: 40px;
         }
         .card {
             background: var(--card); border-radius: 16px; padding: 20px;
@@ -43,24 +43,26 @@
         .btn-danger { background: var(--danger); color: white; }
         
         /* Packages */
-        #packages-section { display: none; }
-        .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; }
+        .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; cursor: pointer; transition: 0.3s; }
+        .pkg-card:active { transform: scale(0.98); }
         .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; }
         .pkg-price { font-size: 20px; font-weight: 700; color: var(--primary); margin: 5px 0; }
         
         /* Admin Panel */
-        #admin-section { display: none; }
         .admin-header { background: #202124; color: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
         
-        /* Modals/Forms */
+        /* Forms */
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        
+        /* Hide sections initially */
+        #scrape-form, #packages-section, #payment-form, #admin-section, #user-section { display: none; }
     </style>
 </head>
 <body>
 
-    <!-- Language Toggle (Auto detected, but manual option provided) -->
+    <!-- Language Toggle -->
     <div style="text-align: right; margin-bottom: 10px;">
         <span id="lang-indicator" style="font-size: 12px; font-weight: bold; color: var(--muted);">🌐 Auto Lang</span>
     </div>
@@ -69,14 +71,14 @@
     <div id="user-section">
         <div class="card profile-card">
             <h2 id="u-greeting">Hello, User</h2>
-            <p id="u-id-text">ID: 00000000</p>
+            <p id="u-id-text" style="margin: 0; font-size: 12px; color: var(--muted);">ID: 00000000</p>
             
             <div class="grid-2">
                 <div class="box"><h3 id="u-searches">0</h3><span id="t-searches">Searches</span></div>
                 <div class="box"><h3 id="u-leads">0</h3><span id="t-leads">Leads</span></div>
             </div>
             
-            <!-- Team Info (Hidden if not a team leader) -->
+            <!-- Team Info -->
             <div id="team-info" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
                 <span style="font-size: 12px; font-weight: 600; color: var(--primary);" id="t-team-limit">Team Members: 0 / 0</span>
             </div>
@@ -92,21 +94,24 @@
             <div id="expired-msg" style="display:none; font-size: 18px; font-weight: bold; color: var(--danger);"></div>
         </div>
 
-        <!-- Action Buttons -->
-        <button class="btn btn-primary" onclick="showScrapeForm()" id="btn-scrape">🚀 Start Scraping</button>
-        <button class="btn btn-outline" onclick="togglePackages()" id="btn-sub">💎 Subscription & Packages</button>
+        <!-- Main Action Buttons -->
+        <div id="main-buttons">
+            <button class="btn btn-primary" onclick="showScrapeForm()" id="btn-scrape">🚀 Start Scraping</button>
+            <button class="btn btn-outline" onclick="showPackages()" id="btn-sub">💎 Subscription & Packages</button>
+        </div>
 
-        <!-- Scraping Form (Hidden by default) -->
-        <div class="card" id="scrape-form" style="display: none;">
-            <h3 style="margin-top:0;" id="t-scrape-title">New Search</h3>
+        <!-- Scraping Form -->
+        <div class="card" id="scrape-form">
+            <h3 style="margin-top:0; color: var(--primary);" id="t-scrape-title">New Search</h3>
             <div class="form-group">
                 <label id="t-cat">Category</label>
-                <select id="cat-select">
+                <select id="cat-select" onchange="toggleCustomCat()">
                     <option value="Restaurants">Restaurants</option>
                     <option value="IT Companies">IT Companies</option>
                     <option value="Hospitals">Hospitals</option>
                     <option value="Real Estate">Real Estate</option>
                     <option value="Plumbers">Plumbers</option>
+                    <option value="Hotels">Hotels</option>
                     <option value="Custom">Custom (Type below)</option>
                 </select>
             </div>
@@ -118,32 +123,56 @@
                 <input type="text" id="loc-input" placeholder="e.g. Dhaka, New York">
             </div>
             <button class="btn btn-primary" onclick="sendScrapeData()" id="btn-start-now">Start Now</button>
-            <button class="btn btn-outline" onclick="hideScrapeForm()" id="btn-cancel">Cancel</button>
+            <button class="btn btn-outline" onclick="goBack('scrape-form')" id="btn-cancel-1">Cancel</button>
         </div>
 
-        <!-- Packages Section (Hidden by default) -->
+        <!-- Packages Section -->
         <div id="packages-section">
-            <h3 style="text-align: center;" id="t-pkg-title">Premium Packages</h3>
-            <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Click a package to send a request to Admin.</p>
+            <h3 style="text-align: center; color: var(--primary);" id="t-pkg-title">Premium Packages</h3>
+            <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Click a package to buy.</p>
             
-            <div class="pkg-card" onclick="buyPackage('1 Month (Basic)', '500 BDT')">
-                <strong id="p1-title">🥉 1 Month (Basic)</strong>
+            <div class="pkg-card" onclick="openPaymentForm('1 Month (Basic)', '500 BDT')">
+                <strong id="p1-title">🥉 1 Month (Basic Plan)</strong>
                 <div class="pkg-price">500 BDT</div>
             </div>
-            <div class="pkg-card" onclick="buyPackage('3 Months (Standard)', '1350 BDT')">
-                <strong id="p2-title">🥈 3 Months (Standard)</strong>
+            <div class="pkg-card" onclick="openPaymentForm('3 Months (Standard)', '1350 BDT')">
+                <strong id="p2-title">🥈 3 Months (Standard Plan)</strong>
                 <div class="pkg-price">1350 BDT</div>
             </div>
-            <div class="pkg-card premium" onclick="buyPackage('6 Months (Premium)', '2500 BDT')">
-                <strong id="p3-title">🥇 6 Months (Premium)</strong>
+            <div class="pkg-card premium" onclick="openPaymentForm('6 Months (Premium)', '2500 BDT')">
+                <div style="position: absolute; top: 10px; right: -25px; background: var(--primary); color: white; font-size: 10px; padding: 2px 25px; transform: rotate(45deg); font-weight: bold;">Best</div>
+                <strong id="p3-title">🥇 6 Months (Premium Plan)</strong>
                 <div class="pkg-price">2500 BDT</div>
             </div>
             
-            <div class="card" style="background: #f8f9fa;">
-                <strong id="t-pay-methods">Payment Methods:</strong><br>
-                <span style="font-size: 13px;">✅ Bkash: <b id="pay-bkash">01757481646</b></span><br>
-                <span style="font-size: 13px;">✅ Nagad: <b id="pay-nagad">01757481646</b></span>
+            <button class="btn btn-outline" onclick="goBack('packages-section')" id="btn-cancel-2">Back</button>
+        </div>
+
+        <!-- Payment Form -->
+        <div class="card" id="payment-form">
+            <h3 style="margin-top:0; color: var(--primary);" id="t-pay-title">Submit Payment</h3>
+            
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px;">
+                <b id="t-selected-pkg">Package:</b> <span id="selected-plan" style="color: var(--primary); font-weight: bold;">...</span><br>
+                <b id="t-amount">Amount:</b> <span id="selected-price" style="color: var(--danger); font-weight: bold;">...</span>
             </div>
+
+            <div style="background: #e8f0fe; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; border: 1px solid #cce0ff;">
+                <strong>Payment Numbers (Personal):</strong><br>
+                ✅ Bkash: <b>01757481646</b><br>
+                ✅ Nagad: <b>01757481646</b>
+            </div>
+
+            <div class="form-group">
+                <label id="t-sender">Sender Number (যে নাম্বার থেকে টাকা পাঠিয়েছেন)</label>
+                <input type="text" id="sender-number" placeholder="e.g. 017XXXXXXXX">
+            </div>
+            <div class="form-group">
+                <label id="t-trxid">Transaction ID (TrxID)</label>
+                <input type="text" id="trx-id" placeholder="e.g. 9H6A2B...">
+            </div>
+            <button class="btn btn-primary" onclick="submitPayment()" id="btn-submit-pay">Submit to Admin</button>
+            <button class="btn btn-outline" onclick="goBack('payment-form', 'packages-section')" id="btn-cancel-3">Cancel</button>
         </div>
     </div>
 
@@ -158,8 +187,8 @@
             <button class="btn btn-primary" onclick="sendAdminCmd('add_user')">➕ Add User (24h Trial)</button>
             <button class="btn btn-primary" onclick="sendAdminCmd('add_team_leader')">👥 Add Team Leader</button>
             <button class="btn btn-outline" onclick="sendAdminCmd('manage_users')">⚙️ Manage Users & Time</button>
-            <button class="btn btn-outline" onclick="sendAdminCmd('edit_packages')">📝 Edit Packages</button>
-            <button class="btn btn-danger" onclick="sendAdminCmd('toggle_bot_buttons')">👁️ Toggle Bot Buttons (Hide/Show)</button>
+            <button class="btn btn-outline" onclick="sendAdminCmd('edit_packages')">📝 Edit Packages Text</button>
+            <button class="btn btn-danger" onclick="sendAdminCmd('toggle_bot_buttons')">👁️ Hide/Show Bot Buttons</button>
         </div>
     </div>
 
@@ -174,38 +203,43 @@
                 timeLeft: "Subscription Time Left", days: "Days", hrs: "Hrs", mins: "Min",
                 expired: "⚠️ ACCOUNT EXPIRED!", btnScrape: "🚀 Start Scraping", btnSub: "💎 Subscription & Packages",
                 scrapeTitle: "New Search", cat: "Category", loc: "Location", startNow: "Start Now", cancel: "Cancel",
-                pkgTitle: "Premium Packages", pkgDesc: "Click a package to send a request to Admin.",
-                payMethods: "Payment Methods:"
+                pkgTitle: "Premium Packages", pkgDesc: "Click a package to buy.",
+                payTitle: "Submit Payment", selectedPkg: "Package:", amount: "Amount:",
+                sender: "Sender Number", trxid: "Transaction ID (TrxID)", submitPay: "Submit to Admin"
             },
             bn: {
                 greeting: "স্বাগতম,", searches: "সার্চ", leads: "লিড",
                 timeLeft: "সাবস্ক্রিপশনের মেয়াদ আছে", days: "দিন", hrs: "ঘণ্টা", mins: "মিনিট",
                 expired: "⚠️ আপনার মেয়াদ শেষ হয়ে গেছে!", btnScrape: "🚀 স্ক্র্যাপিং শুরু করুন", btnSub: "💎 সাবস্ক্রিপশন ও প্যাকেজ",
                 scrapeTitle: "নতুন সার্চ", cat: "ক্যাটাগরি", loc: "লোকেশন (জায়গার নাম)", startNow: "শুরু করুন", cancel: "বাতিল",
-                pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "প্যাকেজ কিনতে ক্লিক করুন, অ্যাডমিনের কাছে মেসেজ চলে যাবে।",
-                payMethods: "পেমেন্ট মাধ্যম:"
+                pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "প্যাকেজ কিনতে ক্লিক করুন।",
+                payTitle: "পেমেন্ট সাবমিট করুন", selectedPkg: "প্যাকেজ:", amount: "পরিমাণ:",
+                sender: "যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "ট্রানজেকশন আইডি (TrxID)", submitPay: "অ্যাডমিনকে পাঠান"
             }
         };
 
-        // --- Logic & URL Params ---
+        // --- Get URL Params ---
         const urlParams = new URLSearchParams(window.location.search);
         const uid = urlParams.get('uid') || '000';
         const uName = decodeURIComponent(urlParams.get('name') || 'User');
-        const role = urlParams.get('role') || 'user'; // 'admin' or 'user'
+        const role = urlParams.get('role') || 'user'; 
         const endsAtStr = urlParams.get('ends');
         const teamLimit = parseInt(urlParams.get('team_limit') || '0');
         const teamAdded = parseInt(urlParams.get('team_added') || '0');
+        const botUsername = urlParams.get('bot') || ''; // Needed for Deep Links
 
-        // Detect Language
+        // --- Language Detection ---
         let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
         document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
         applyLanguage(userLang);
 
-        // Render UI based on Role
+        // --- Render UI ---
         if (role === 'admin') {
-            document.getElementById('user-section').style.display = 'none';
             document.getElementById('admin-section').style.display = 'block';
         } else {
+            document.getElementById('user-section').style.display = 'block';
+            document.getElementById('main-buttons').style.display = 'block';
+            
             document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
             document.getElementById('u-id-text').innerText = "ID: " + uid;
             document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
@@ -235,10 +269,17 @@
             document.getElementById('t-cat').innerText = dict[l].cat;
             document.getElementById('t-loc').innerText = dict[l].loc;
             document.getElementById('btn-start-now').innerText = dict[l].startNow;
-            document.getElementById('btn-cancel').innerText = dict[l].cancel;
+            document.getElementById('btn-cancel-1').innerText = dict[l].cancel;
+            document.getElementById('btn-cancel-2').innerText = dict[l].cancel;
+            document.getElementById('btn-cancel-3').innerText = dict[l].cancel;
             document.getElementById('t-pkg-title').innerText = dict[l].pkgTitle;
             document.getElementById('t-pkg-desc').innerText = dict[l].pkgDesc;
-            document.getElementById('t-pay-methods').innerText = dict[l].payMethods;
+            document.getElementById('t-pay-title').innerText = dict[l].payTitle;
+            document.getElementById('t-selected-pkg').innerText = dict[l].selectedPkg;
+            document.getElementById('t-amount').innerText = dict[l].amount;
+            document.getElementById('t-sender').innerText = dict[l].sender;
+            document.getElementById('t-trxid').innerText = dict[l].trxid;
+            document.getElementById('btn-submit-pay').innerText = dict[l].submitPay;
         }
 
         function startTimer(ends, l) {
@@ -267,35 +308,35 @@
             }
         }
 
-        function togglePackages() {
-            const p = document.getElementById('packages-section');
-            p.style.display = p.style.display === 'none' || p.style.display === '' ? 'block' : 'none';
-        }
-
-        function buyPackage(plan, price) {
-            let text = userLang === 'bn' ? 
-                `অ্যাডমিন, আমি ${plan} প্যাকেজটি ${price} দিয়ে কিনতে চাই।\nআমার UID: ${uid}` : 
-                `Hello Admin, I want to buy the ${plan} package for ${price}.\nMy UID: ${uid}`;
-            tg.openTelegramLink(`https://t.me/AfMdshakil?text=${encodeURIComponent(text)}`);
-        }
-
-        // Scraping Form Logic
-        document.getElementById('cat-select').addEventListener('change', function() {
-            document.getElementById('custom-cat-group').style.display = this.value === 'Custom' ? 'block' : 'none';
-        });
-
+        // --- Navigation Logic ---
         function showScrapeForm() {
+            document.getElementById('main-buttons').style.display = 'none';
             document.getElementById('scrape-form').style.display = 'block';
-            document.getElementById('btn-scrape').style.display = 'none';
-            document.getElementById('btn-sub').style.display = 'none';
         }
 
-        function hideScrapeForm() {
-            document.getElementById('scrape-form').style.display = 'none';
-            document.getElementById('btn-scrape').style.display = 'flex';
-            document.getElementById('btn-sub').style.display = 'flex';
+        function showPackages() {
+            document.getElementById('main-buttons').style.display = 'none';
+            document.getElementById('packages-section').style.display = 'block';
         }
 
+        function openPaymentForm(plan, price) {
+            document.getElementById('packages-section').style.display = 'none';
+            document.getElementById('payment-form').style.display = 'block';
+            document.getElementById('selected-plan').innerText = plan;
+            document.getElementById('selected-price').innerText = price;
+        }
+
+        function goBack(currentId, targetId = 'main-buttons') {
+            document.getElementById(currentId).style.display = 'none';
+            document.getElementById(targetId).style.display = 'block';
+        }
+
+        function toggleCustomCat() {
+            const val = document.getElementById('cat-select').value;
+            document.getElementById('custom-cat-group').style.display = val === 'Custom' ? 'block' : 'none';
+        }
+
+        // --- Deep Link Commands (100% Crash Proof) ---
         function sendScrapeData() {
             let cat = document.getElementById('cat-select').value;
             if (cat === 'Custom') cat = document.getElementById('custom-cat').value;
@@ -307,13 +348,33 @@
             }
             
             let query = `${cat} in ${loc}`;
-            // Send data back to Python Bot
-            tg.sendData(JSON.stringify({ action: 'start_scrape', query: query }));
-            tg.close(); // Close Web App
+            // Open Telegram Chat with pre-filled command
+            let link = `https://t.me/${botUsername}?text=${encodeURIComponent('/scrape ' + query)}`;
+            tg.openTelegramLink(link);
+            tg.close();
+        }
+
+        function submitPayment() {
+            let plan = document.getElementById('selected-plan').innerText;
+            let price = document.getElementById('selected-price').innerText;
+            let sender = document.getElementById('sender-number').value;
+            let trxid = document.getElementById('trx-id').value;
+
+            if (!sender || !trxid) {
+                tg.showAlert(userLang === 'bn' ? "নাম্বার এবং TrxID দিন!" : "Provide Number and TrxID!");
+                return;
+            }
+
+            // Command format: /buy Plan | Price | Sender | TrxID
+            let cmd = `/buy ${plan} | ${price} | ${sender} | ${trxid}`;
+            let link = `https://t.me/${botUsername}?text=${encodeURIComponent(cmd)}`;
+            tg.openTelegramLink(link);
+            tg.close();
         }
 
         function sendAdminCmd(cmd) {
-            tg.sendData(JSON.stringify({ action: 'admin_cmd', cmd: cmd }));
+            let link = `https://t.me/${botUsername}?text=${encodeURIComponent('/admin_cmd ' + cmd)}`;
+            tg.openTelegramLink(link);
             tg.close();
         }
     </script>
