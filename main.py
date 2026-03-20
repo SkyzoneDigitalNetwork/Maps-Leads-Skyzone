@@ -9,7 +9,6 @@ import io
 import requests
 import time
 import urllib.parse
-import base64
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -284,7 +283,8 @@ def get_main_menu(uid):
     team_added = user_data.get('team_added', 0) if user_data else 0
     role = 'admin' if is_super_admin(uid) else 'user'
     
-    web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}"
+    # 🌟 PASSING FB_URL TO WEB APP FOR DIRECT DATABASE COMMUNICATION
+    web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
     
     keyboard =[[InlineKeyboardButton("🌐 প্রোফাইল ও ড্যাশবোর্ড (Web App)", web_app=WebAppInfo(url=web_url))]]
     hidden_btns = db.reference('bot_settings/hidden_buttons').get() or {}
@@ -308,7 +308,7 @@ def get_main_menu(uid):
 
 def get_expired_menu(uid):
     user_data = get_user_data(uid)
-    web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&ends=expired&role=user&bot={BOT_USERNAME}"
+    web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&ends=expired&role=user&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
     return InlineKeyboardMarkup([[InlineKeyboardButton("🌐 ওয়েব অ্যাপ (প্যাকেজ ও পেমেন্ট)", web_app=WebAppInfo(url=web_url))]])
 
 async def show_toggle_menu(message_obj, uid):
@@ -320,66 +320,44 @@ async def show_toggle_menu(message_obj, uid):
     if hasattr(message_obj, 'edit_text'): await message_obj.edit_text("👁️ **বাটন হাইড/শো কন্ট্রোল:**\n(❌ মানে হাইড, ✅ মানে শো)", reply_markup=InlineKeyboardMarkup(btns))
     else: await message_obj.reply_text("👁️ **বাটন হাইড/শো কন্ট্রোল:**\n(❌ মানে হাইড, ✅ মানে শো)", reply_markup=InlineKeyboardMarkup(btns))
 
-# 🌟 NEW: Web App Deep Link Handler (CRASH-PROOF)
-async def process_webapp_action(update: Update, context: ContextTypes.DEFAULT_TYPE, uid, uname, action, data):
-    if action == 'scrape':
-        if uid in active_tasks:
-            await update.message.reply_text("⚠️ আপনার একটি কাজ অলরেডি চলছে!")
-            return
-        task = asyncio.create_task(scraper_worker(data, uid, uname, context))
-        active_tasks[uid] = task
-        
-    elif action == 'buy':
-        parts = data.split('|')
-        if len(parts) >= 4:
-            admin_msg = f"💰 **New Payment!**\n👤 User: {uname} (`{uid}`)\n📦 Pkg: {parts[0]}\n💵 Amt: {parts[1]}\n📱 No: `{parts[2]}`\n🔢 TrxID: `{parts[3]}`"
-            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown')
-            await update.message.reply_text("✅ আপনার পেমেন্ট রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে।")
-            
-    elif action == 'admin_cmd' and is_super_admin(uid):
-        if data == 'add_user':
-            context.user_data['add_user_step'] = 'name'
-            context.user_data['add_user_is_tl'] = False
-            await update.message.reply_text("✍️ **নতুন ইউজারের নাম লিখুন:**")
-        elif data == 'add_team_leader':
-            context.user_data['add_user_step'] = 'name'
-            context.user_data['add_user_is_tl'] = True
-            await update.message.reply_text("✍️ **টিম লিডারের নাম লিখুন:**")
-        elif data == 'manage_users':
-            users = db.reference('bot_users').get() or {}
-            keyboard =[[InlineKeyboardButton(f"👤 {u_data.get('name')} ({u_id})", callback_data=f'sa_usr_{u_id}')] for u_id, u_data in users.items()]
-            await update.message.reply_text("যেকোনো ইউজারের প্রোফাইল দেখতে নামের ওপর ক্লিক করুন:", reply_markup=InlineKeyboardMarkup(keyboard))
-        elif data == 'edit_packages':
-            context.user_data['awaiting_package_text'] = True
-            await update.message.reply_text("✍️ **আপনার প্যাকেজ লিস্ট, দাম এবং পেমেন্ট নাম্বার লিখে পাঠান:**")
-        elif data == 'toggle_bot_buttons':
-            await show_toggle_menu(update.message, uid)
-
 # --- Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     uname = update.effective_user.first_name
     text = update.message.text.strip()
     
-    # 🌟 CRASH-PROOF DEEP LINK CATCHER
-    if len(text.split()) > 1:
-        payload = text.split()[1]
-        try:
-            padded = payload + '=' * (-len(payload) % 4)
-            decoded = base64.urlsafe_b64decode(padded).decode('utf-8')
-            parts = decoded.split('|||')
-            action = parts[0]
-            data = parts[1] if len(parts) > 1 else ""
+    # 🌟 100% BULLETPROOF FIREBASE COMMUNICATION FROM WEB APP
+    if text == '/start do_scrape':
+        req = db.reference(f'pending_requests/{uid}').get()
+        if req and req.get('action') == 'scrape':
+            query = req.get('query')
+            db.reference(f'pending_requests/{uid}').delete() # Clear request
             
             is_auth, sub_status = check_subscription(uid)
             if not is_auth:
                 await update.message.reply_text("⚠️ আপনার অ্যাকাউন্টের মেয়াদ শেষ!", reply_markup=get_expired_menu(uid))
                 return
                 
-            await process_webapp_action(update, context, uid, uname, action, data)
-            return
-        except Exception as e:
-            logger.error(f"Deep link error: {e}")
+            if uid in active_tasks:
+                await update.message.reply_text("⚠️ আপনার একটি কাজ অলরেডি চলছে!")
+                return
+            task = asyncio.create_task(scraper_worker(query, uid, uname, context))
+            active_tasks[uid] = task
+        return
+
+    elif text == '/start do_payment':
+        req = db.reference(f'pending_requests/{uid}').get()
+        if req and req.get('action') == 'payment':
+            plan = req.get('plan', '')
+            price = req.get('price', '')
+            sender = req.get('sender', '')
+            trxid = req.get('trxid', '')
+            db.reference(f'pending_requests/{uid}').delete() # Clear request
+            
+            admin_msg = f"💰 **New Payment Received!**\n\n👤 **User:** {uname} (`{uid}`)\n📦 **Package:** {plan}\n💵 **Amount:** {price}\n📱 **Sender No:** `{sender}`\n🔢 **TrxID:** `{trxid}`\n\n✅ To approve, copy this command and send:\n`/approve_sub {uid} 30`"
+            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown')
+            await update.message.reply_text("✅ আপনার পেমেন্ট রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে। ভেরিফাই করে দ্রুত আপনার অ্যাকাউন্ট আপডেট করা হবে।")
+        return
 
     context.user_data.clear()
     if uid in active_tasks:
@@ -393,6 +371,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text("🗺️ **Google Maps Scraper Dashboard**\n\nআপনার কাজ শুরু করতে নিচের বাটন ব্যবহার করুন:", reply_markup=get_main_menu(uid))
+
+async def approve_sub_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = str(update.effective_user.id)
+    if not is_super_admin(uid): return
+    try:
+        target_uid = context.args[0]
+        days = int(context.args[1])
+        user_ref = db.reference(f'bot_users/{target_uid}')
+        user_data = user_ref.get()
+        if user_data:
+            current_end_str = user_data.get('sub_ends')
+            if current_end_str:
+                current_end = datetime.fromisoformat(current_end_str)
+                if current_end < datetime.now() and days > 0: current_end = datetime.now()
+            else:
+                current_end = datetime.now()
+            new_end = current_end + timedelta(days=days)
+            user_ref.update({'sub_ends': new_end.isoformat()})
+            await update.message.reply_text(f"✅ ইউজার `{target_uid}` এর মেয়াদ {days} দিন বাড়ানো হয়েছে।")
+            await context.bot.send_message(chat_id=target_uid, text=f"🎉 **অভিনন্দন!**\nআপনার পেমেন্ট ভেরিফাই হয়েছে এবং অ্যাকাউন্টের মেয়াদ {days} দিন বাড়ানো হয়েছে।\nএখন আপনি কাজ শুরু করতে পারেন।")
+        else:
+            await update.message.reply_text("❌ ইউজার পাওয়া যায়নি।")
+    except Exception as e:
+        await update.message.reply_text("❌ ব্যবহার: `/approve_sub <user_id> <days>`")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -519,7 +521,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("কোনো টিম মেম্বার নেই।", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 ব্যাক", callback_data='super_admin_panel')]]))
             return
         
-        keyboard =[[InlineKeyboardButton(f"👤 {u_data.get('name')} ({u_id})", callback_data=f'sa_usr_{u_id}')] for u_id, u_data in users.items()]
+        keyboard =[]
+        for u_id, u_data in users.items():
+            keyboard.append([InlineKeyboardButton(f"👤 {u_data.get('name')} ({u_id})", callback_data=f'sa_usr_{u_id}')])
         keyboard.append([InlineKeyboardButton("🔙 ব্যাক", callback_data='super_admin_panel')])
         await query.edit_message_text("যেকোনো ইউজারের প্রোফাইল দেখতে নামের ওপর ক্লিক করুন:", reply_markup=InlineKeyboardMarkup(keyboard))
 
@@ -647,12 +651,6 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['awaiting_days_for'] = None
         return
 
-    if context.user_data.get('awaiting_package_text') and is_super_admin(uid):
-        db.reference('bot_settings/packages').set(text)
-        await update.message.reply_text("✅ প্যাকেজ লিস্ট সেভ করা হয়েছে।")
-        context.user_data['awaiting_package_text'] = False
-        return
-
     is_auth, sub_status = check_subscription(uid)
     if not is_auth: return
     
@@ -677,6 +675,7 @@ def main():
     app.post_init = post_init
     app.job_queue.run_once(keep_alive_task, 5)
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("approve_sub", approve_sub_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
     logger.info("🤖 SaaS Maps Bot is running...")
