@@ -42,13 +42,11 @@
         .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; }
         .pkg-price { font-size: 20px; font-weight: 700; color: var(--primary); margin: 5px 0; }
         
-        .admin-header { background: #202124; color: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
-        
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
         .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
         
-        #scrape-form, #packages-section, #payment-form, #admin-section, #user-section { display: none; }
+        #scrape-form, #packages-section, #payment-form { display: none; }
     </style>
 </head>
 <body>
@@ -65,9 +63,6 @@
             <div class="grid-2">
                 <div class="box"><h3 id="u-searches">0</h3><span id="t-searches">Searches</span></div>
                 <div class="box"><h3 id="u-leads">0</h3><span id="t-leads">Leads</span></div>
-            </div>
-            <div id="team-info" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                <span style="font-size: 12px; font-weight: 600; color: var(--primary);" id="t-team-limit">Team Members: 0 / 0</span>
             </div>
         </div>
 
@@ -97,7 +92,6 @@
                     <option value="Hospitals">Hospitals</option>
                     <option value="Real Estate">Real Estate</option>
                     <option value="Plumbers">Plumbers</option>
-                    <option value="Hotels">Hotels</option>
                     <option value="Custom">Custom (Type below)</option>
                 </select>
             </div>
@@ -108,7 +102,7 @@
                 <label id="t-loc">Location</label>
                 <input type="text" id="loc-input" placeholder="e.g. Dhaka, New York">
             </div>
-            <button class="btn btn-primary" onclick="sendToBot('scrape', getScrapeQuery())" id="btn-start-now">Start Now</button>
+            <button class="btn btn-primary" onclick="submitScrape()" id="btn-start-now">Start Now</button>
             <button class="btn btn-outline" onclick="goBack('scrape-form')" id="btn-cancel-1">Cancel</button>
         </div>
 
@@ -156,39 +150,24 @@
         </div>
     </div>
 
-    <!-- ADMIN DASHBOARD -->
-    <div id="admin-section">
-        <div class="admin-header">
-            <h2>👑 Super Admin</h2>
-            <p style="margin:0; font-size: 12px; color:#ccc;">Control Panel</p>
-        </div>
-        <div class="card">
-            <button class="btn btn-primary" onclick="sendToBot('admin_cmd', 'add_user')">➕ Add User (24h Trial)</button>
-            <button class="btn btn-primary" onclick="sendToBot('admin_cmd', 'add_team_leader')">👥 Add Team Leader</button>
-            <button class="btn btn-outline" onclick="sendToBot('admin_cmd', 'manage_users')">⚙️ Manage Users & Time</button>
-            <button class="btn btn-outline" onclick="sendToBot('admin_cmd', 'edit_packages')">📝 Edit Packages Text</button>
-            <button class="btn btn-outline" onclick="sendToBot('admin_cmd', 'toggle_bot_buttons')">👁️ Hide/Show Bot Buttons</button>
-        </div>
-    </div>
-
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
         const dict = {
             en: {
-                greeting: "Hello,", searches: "Searches", leads: "Leads",
-                timeLeft: "Subscription Time Left", days: "Days", hrs: "Hrs", mins: "Min",
-                expired: "⚠️ ACCOUNT EXPIRED!", btnScrape: "🚀 Start Scraping", btnSub: "💎 Subscription & Packages",
+                greeting: "Hello,", searches: "Searches", leads: "Leads", timeLeft: "Subscription Time Left",
+                days: "Days", hrs: "Hrs", mins: "Min", expired: "⚠️ ACCOUNT EXPIRED!",
+                btnScrape: "🚀 Start Scraping", btnSub: "💎 Subscription & Packages",
                 scrapeTitle: "New Search", cat: "Category", loc: "Location", startNow: "Start Now", cancel: "Cancel",
                 pkgTitle: "Premium Packages", pkgDesc: "Click a package to buy.",
                 payTitle: "Submit Payment", selectedPkg: "Package:", amount: "Amount:",
                 sender: "Sender Number", trxid: "Transaction ID (TrxID)", submitPay: "Submit to Admin"
             },
             bn: {
-                greeting: "স্বাগতম,", searches: "সার্চ", leads: "লিড",
-                timeLeft: "সাবস্ক্রিপশনের মেয়াদ আছে", days: "দিন", hrs: "ঘণ্টা", mins: "মিনিট",
-                expired: "⚠️ আপনার মেয়াদ শেষ হয়ে গেছে!", btnScrape: "🚀 স্ক্র্যাপিং শুরু করুন", btnSub: "💎 সাবস্ক্রিপশন ও প্যাকেজ",
+                greeting: "স্বাগতম,", searches: "সার্চ", leads: "লিড", timeLeft: "সাবস্ক্রিপশনের মেয়াদ আছে",
+                days: "দিন", hrs: "ঘণ্টা", mins: "মিনিট", expired: "⚠️ আপনার মেয়াদ শেষ হয়ে গেছে!",
+                btnScrape: "🚀 স্ক্র্যাপিং শুরু করুন", btnSub: "💎 সাবস্ক্রিপশন ও প্যাকেজ",
                 scrapeTitle: "নতুন সার্চ", cat: "ক্যাটাগরি", loc: "লোকেশন (জায়গার নাম)", startNow: "শুরু করুন", cancel: "বাতিল",
                 pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "প্যাকেজ কিনতে ক্লিক করুন।",
                 payTitle: "পেমেন্ট সাবমিট করুন", selectedPkg: "প্যাকেজ:", amount: "পরিমাণ:",
@@ -199,33 +178,20 @@
         const urlParams = new URLSearchParams(window.location.search);
         const uid = urlParams.get('uid') || '000';
         const uName = decodeURIComponent(urlParams.get('name') || 'User');
-        const role = urlParams.get('role') || 'user'; 
         const endsAtStr = urlParams.get('ends');
-        const teamLimit = parseInt(urlParams.get('team_limit') || '0');
-        const teamAdded = parseInt(urlParams.get('team_added') || '0');
         const botUsername = urlParams.get('bot') || '';
+        const fbUrl = decodeURIComponent(urlParams.get('fb') || '');
 
         let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
         document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
         applyLanguage(userLang);
 
-        if (role === 'admin') {
-            document.getElementById('admin-section').style.display = 'block';
-        } else {
-            document.getElementById('user-section').style.display = 'block';
-            document.getElementById('main-buttons').style.display = 'block';
-            document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
-            document.getElementById('u-id-text').innerText = "ID: " + uid;
-            document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
-            document.getElementById('u-leads').innerText = urlParams.get('leads') || '0';
+        document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
+        document.getElementById('u-id-text').innerText = "ID: " + uid;
+        document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
+        document.getElementById('u-leads').innerText = urlParams.get('leads') || '0';
 
-            if (teamLimit > 0) {
-                document.getElementById('team-info').style.display = 'block';
-                document.getElementById('t-team-limit').innerText = userLang === 'bn' ? 
-                    `আপনার টিম মেম্বার: ${teamAdded} / ${teamLimit}` : `Team Members: ${teamAdded} / ${teamLimit}`;
-            }
-            startTimer(endsAtStr, userLang);
-        }
+        startTimer(endsAtStr, userLang);
 
         function applyLanguage(l) {
             document.getElementById('t-searches').innerText = dict[l].searches;
@@ -295,36 +261,53 @@
             document.getElementById('custom-cat-group').style.display = document.getElementById('cat-select').value === 'Custom' ? 'block' : 'none';
         }
 
-        function getScrapeQuery() {
+        // 🌟 100% CRASH-PROOF FIREBASE COMMUNICATION
+        async function submitScrape() {
             let cat = document.getElementById('cat-select').value;
             if (cat === 'Custom') cat = document.getElementById('custom-cat').value;
             let loc = document.getElementById('loc-input').value;
-            if (!cat || !loc) { tg.showAlert(userLang === 'bn' ? "ক্যাটাগরি এবং লোকেশন দিন!" : "Provide Category and Location!"); return null; }
-            return `${cat} in ${loc}`;
-        }
+            if (!cat || !loc) { tg.showAlert(userLang === 'bn' ? "ক্যাটাগরি এবং লোকেশন দিন!" : "Provide Category and Location!"); return; }
+            
+            let btn = document.getElementById('btn-start-now');
+            btn.innerText = "Processing..."; btn.disabled = true;
 
-        // 🌟 CRASH-PROOF DEEP LINK SENDER
-        function sendToBot(action, data) {
-            if (!data && action === 'scrape') return;
-            let str = action + "|||" + data;
-            // Base64Url encode safely
-            let b64 = btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-            let link = `https://t.me/${botUsername}?start=${b64}`;
-            tg.openTelegramLink(link);
+            let query = `${cat} in ${loc}`;
+            
+            // Save request to Firebase directly
+            if(fbUrl) {
+                await fetch(`${fbUrl}/pending_requests/${uid}.json`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ action: 'scrape', query: query, timestamp: Date.now() })
+                });
+            }
+            
+            // Tell Bot to check Firebase (No long data, so no crash!)
+            tg.openTelegramLink(`https://t.me/${botUsername}?text=/start%20do_scrape`);
             tg.close();
         }
 
-        function submitPayment() {
+        async function submitPayment() {
             let plan = document.getElementById('selected-plan').innerText;
             let price = document.getElementById('selected-price').innerText;
             let sender = document.getElementById('sender-number').value;
             let trxid = document.getElementById('trx-id').value;
 
-            if (!sender || !trxid) {
-                tg.showAlert(userLang === 'bn' ? "নাম্বার এবং TrxID দিন!" : "Provide Number and TrxID!");
-                return;
+            if (!sender || !trxid) { tg.showAlert(userLang === 'bn' ? "নাম্বার এবং TrxID দিন!" : "Provide Number and TrxID!"); return; }
+
+            let btn = document.getElementById('btn-submit-pay');
+            btn.innerText = "Processing..."; btn.disabled = true;
+
+            // Save request to Firebase directly
+            if(fbUrl) {
+                await fetch(`${fbUrl}/pending_requests/${uid}.json`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ action: 'payment', plan: plan, price: price, sender: sender, trxid: trxid, timestamp: Date.now() })
+                });
             }
-            sendToBot('buy', `${plan}|${price}|${sender}|${trxid}`);
+
+            // Tell Bot to check Firebase
+            tg.openTelegramLink(`https://t.me/${botUsername}?text=/start%20do_payment`);
+            tg.close();
         }
     </script>
 </body>
