@@ -22,7 +22,7 @@ import firebase_admin
 from firebase_admin import credentials, db
 from playwright.async_api import async_playwright
 import aiohttp
-from aiohttp import web # 🌟 NEW: Web server for HTML hosting
+from aiohttp import web
 
 # --- Load Env ---
 load_dotenv()
@@ -39,12 +39,12 @@ FB_URL = os.environ.get('FIREBASE_DATABASE_URL')
 RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
 PORT = int(os.environ.get('PORT', '8080'))
 
-# 🌟 NEW: Web App URL is now exactly your Render URL
+# Web App URL
 WEB_APP_URL = RENDER_URL if RENDER_URL else "http://localhost:8080"
 
 # --- Global State ---
 active_tasks = {} 
-recent_logs = [] 
+recent_logs =[] 
 BOT_USERNAME = "" 
 
 CATEGORIES =[
@@ -95,12 +95,6 @@ def check_subscription(uid):
     sub_ends = datetime.fromisoformat(sub_ends_str)
     if datetime.now() > sub_ends: return False, "expired"
     return True, sub_ends
-
-async def post_init(app: Application):
-    global BOT_USERNAME
-    bot_info = await app.bot.get_me()
-    BOT_USERNAME = bot_info.username
-    logger.info(f"🤖 Bot Username: @{BOT_USERNAME}")
 
 async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
     if not RENDER_URL: return
@@ -349,8 +343,7 @@ def get_main_menu(uid):
     team_added = user_data.get('team_added', 0) if user_data else 0
     role = 'admin' if is_super_admin(uid) else 'user'
     
-    # 🌟 NEW: Format URL directly pointing to Render Root (/)
-    web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}"
+    web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
     
     keyboard = [[InlineKeyboardButton("🌐 প্রোফাইল ও ড্যাশবোর্ড (Web App)", web_app=WebAppInfo(url=web_url))]]
     
@@ -377,15 +370,14 @@ def get_main_menu(uid):
 
 def get_expired_menu(uid):
     user_data = get_user_data(uid)
-    web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&ends=expired&role=user&bot={BOT_USERNAME}"
+    web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&ends=expired&role=user&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
     return InlineKeyboardMarkup([[InlineKeyboardButton("🌐 ওয়েব অ্যাপ (প্যাকেজ ও পেমেন্ট)", web_app=WebAppInfo(url=web_url))]])
 
 async def show_toggle_menu(message_obj, uid):
     hidden = db.reference('bot_settings/hidden_buttons').get() or {}
     def get_icon(key): return "❌" if hidden.get(key) else "✅"
 
-    btns = [[InlineKeyboardButton(f"{get_icon('btn_target')} টার্গেট সেট", callback_data='tgl_btn_target')],[InlineKeyboardButton(f"{get_icon('btn_scrape')} শুরু/বন্ধ করুন", callback_data='tgl_btn_scrape')],[InlineKeyboardButton(f"{get_icon('btn_download')} লিড ডাউনলোড", callback_data='tgl_btn_download')],[InlineKeyboardButton(f"{get_icon('btn_clear')} প্যানেল ক্লিয়ার", callback_data='tgl_btn_clear')],[InlineKeyboardButton(f"{get_icon('btn_team')} টিম মেম্বার অ্যাড", callback_data='tgl_btn_team')],
-        [InlineKeyboardButton("🔙 ব্যাক", callback_data='super_admin_panel')]
+    btns = [[InlineKeyboardButton(f"{get_icon('btn_target')} টার্গেট সেট", callback_data='tgl_btn_target')],[InlineKeyboardButton(f"{get_icon('btn_scrape')} শুরু/বন্ধ করুন", callback_data='tgl_btn_scrape')],[InlineKeyboardButton(f"{get_icon('btn_download')} লিড ডাউনলোড", callback_data='tgl_btn_download')],[InlineKeyboardButton(f"{get_icon('btn_clear')} প্যানেল ক্লিয়ার", callback_data='tgl_btn_clear')],[InlineKeyboardButton(f"{get_icon('btn_team')} টিম মেম্বার অ্যাড", callback_data='tgl_btn_team')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='super_admin_panel')]
     ]
     if hasattr(message_obj, 'edit_text'):
         await message_obj.edit_text("👁️ **বাটন হাইড/শো কন্ট্রোল:**\n(❌ মানে হাইড, ✅ মানে শো)", reply_markup=InlineKeyboardMarkup(btns))
@@ -396,9 +388,9 @@ async def show_toggle_menu(message_obj, uid):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     uname = update.effective_user.first_name
-    text = update.message.text.strip()
+    text = update.message.text.strip() if update.message else ""
     
-    # 🌟 CRASH-PROOF DEEP LINK CATCHER (From Web App)
+    # 🌟 CRASH-PROOF DEEP LINK CATCHER (From Web App via Firebase)
     if text == '/start do_scrape':
         req = db.reference(f'pending_requests/{uid}').get()
         if req and req.get('action') == 'scrape':
@@ -444,6 +436,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**\n\nনতুন করে রিনিউ করতে বা প্যাকেজ দেখতে নিচের '🌐 ওয়েব অ্যাপ' বাটনে ক্লিক করুন।", reply_markup=get_expired_menu(uid))
         return
 
+    # Check if Super Admin, add Web App button to their panel too
+    if is_super_admin(uid):
+        user_data = get_user_data(uid)
+        lt_leads = user_data.get('lt_leads', 0) if user_data else 0
+        lt_searches = user_data.get('lt_searches', 0) if user_data else 0
+        sub_ends = user_data.get('sub_ends', '') if user_data else ''
+        role = 'admin'
+        web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'Super Admin'))}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
+        
+        btns = [[InlineKeyboardButton("🌐 অ্যাডমিন প্যানেল (Web App)", web_app=WebAppInfo(url=web_url))],[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
+        ]
+        await update.message.reply_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
+        return
+
     await update.message.reply_text("🗺️ **Google Maps Scraper Dashboard**\n\nআপনার কাজ শুরু করতে নিচের বাটন ব্যবহার করুন:", reply_markup=get_main_menu(uid))
 
 async def approve_sub_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -479,7 +485,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except: pass 
     
     is_auth, sub_status = check_subscription(uid)
-    if not is_auth and query.data not in['main_menu', 'refresh_bot']:
+    if not is_auth and query.data not in ['main_menu', 'refresh_bot']:
         await query.edit_message_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**", reply_markup=get_expired_menu(uid))
         return
 
@@ -488,11 +494,27 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             active_tasks[uid].cancel()
             del active_tasks[uid]
         context.user_data.clear()
-        await query.edit_message_text("🔄 সবকিছু রিসেট করা হয়েছে। নতুন করে শুরু করুন:", reply_markup=get_main_menu(uid))
+        
+        if is_super_admin(uid):
+            user_data = get_user_data(uid)
+            web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'Super Admin'))}&role=admin&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
+            btns = [[InlineKeyboardButton("🌐 অ্যাডমিন প্যানেল (Web App)", web_app=WebAppInfo(url=web_url))],[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
+            ]
+            await query.edit_message_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
+        else:
+            await query.edit_message_text("🔄 সবকিছু রিসেট করা হয়েছে। নতুন করে শুরু করুন:", reply_markup=get_main_menu(uid))
         return
 
     if query.data == 'main_menu':
-        await query.edit_message_text("🗺️ **Google Maps Scraper Dashboard**", reply_markup=get_main_menu(uid))
+        if is_super_admin(uid):
+            user_data = get_user_data(uid)
+            web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'Super Admin'))}&role=admin&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
+            btns = [[InlineKeyboardButton("🌐 অ্যাডমিন প্যানেল (Web App)", web_app=WebAppInfo(url=web_url))],[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],
+                [InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
+            ]
+            await query.edit_message_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
+        else:
+            await query.edit_message_text("🗺️ **Google Maps Scraper Dashboard**", reply_markup=get_main_menu(uid))
         return
 
     if query.data == 'set_target':
@@ -561,7 +583,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == 'super_admin_panel':
         if not is_super_admin(uid): return
-        btns = [[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
+        user_data = get_user_data(uid)
+        web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'Super Admin'))}&role=admin&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
+        btns = [[InlineKeyboardButton("🌐 অ্যাডমিন প্যানেল (Web App)", web_app=WebAppInfo(url=web_url))],[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],
+            [InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
         ]
         await query.edit_message_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
         
@@ -744,23 +769,29 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("🚀 স্ক্র্যাপিং শুরু করুন", callback_data='start_scraping')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]]
         await update.message.reply_text(f"✅ **টার্গেট:** `{context.user_data['target_query']}`\nএখন শুরু করতে পারেন।", reply_markup=InlineKeyboardMarkup(keyboard))
 
-# 🌟 NEW: Aiohttp Web Server to host the HTML page directly from Python
 async def main_async():
     app = Application.builder().token(TOKEN).build()
-    app.post_init = post_init
-    app.job_queue.run_once(keep_alive_task, 5)
     
+    # 🌟 CRITICAL: Fetch Bot Username right after build
+    global BOT_USERNAME
+    try:
+        await app.initialize()
+        bot_info = await app.bot.get_me()
+        BOT_USERNAME = bot_info.username
+        logger.info(f"🤖 Bot Username set to: {BOT_USERNAME}")
+    except Exception as e:
+        logger.error(f"Error fetching bot info: {e}")
+
+    app.job_queue.run_once(keep_alive_task, 5)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("approve_sub", approve_sub_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
     
     if RENDER_URL:
-        # Set Telegram Webhook
         webhook_path = f"/{TOKEN[-10:]}"
         await app.bot.set_webhook(url=f"{RENDER_URL}{webhook_path}")
         
-        # Aiohttp routes
         async def telegram_webhook(request):
             try:
                 data = await request.json()
@@ -775,7 +806,7 @@ async def main_async():
                     content = f.read()
                 return web.Response(text=content, content_type='text/html')
             except Exception:
-                return web.Response(text="<h1>HTML File Not Found!</h1><p>Please make sure index.html is uploaded to Render.</p>", status=404, content_type='text/html')
+                return web.Response(text="<h1>HTML File Not Found!</h1>", status=404, content_type='text/html')
                 
         web_app = web.Application()
         web_app.router.add_post(webhook_path, telegram_webhook)
@@ -788,9 +819,9 @@ async def main_async():
         
         logger.info(f"🤖 Web App & Bot running natively on {RENDER_URL}")
         
-        async with app:
-            await app.start()
-            await asyncio.Event().wait()
+        # We start the application without initialize() since we already did it
+        await app.start()
+        await asyncio.Event().wait()
     else:
         logger.info("🤖 Bot running on polling mode...")
         app.run_polling()
