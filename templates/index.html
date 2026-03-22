@@ -3,71 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Skyzone Dashboard</title>
+    <title>Skyzone Pro Dashboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #01875f; --danger: #d32f2f; --bg: #f4f7f6;
             --card: #ffffff; --text: #202124; --muted: #5f6368;
+            --admin-bg: #1e1e2d; --admin-card: #2b2b40; --admin-text: #ffffff;
         }
-        body {
-            font-family: 'Poppins', sans-serif; background: var(--bg);
-            color: var(--text); margin: 0; padding: 15px; padding-bottom: 40px;
-        }
-        .card {
-            background: var(--card); border-radius: 16px; padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 20px;
-        }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; padding-bottom: 40px; }
+        .card { background: var(--card); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 20px; }
         h2 { margin: 0 0 5px 0; color: var(--primary); font-size: 22px; }
+        
         .grid-2 { display: flex; gap: 10px; margin-top: 15px; }
         .box { background: #f8f9fa; flex: 1; padding: 15px 10px; border-radius: 12px; border: 1px solid #e8eaed; text-align: center; }
         .box h3 { margin: 0; font-size: 22px; color: var(--text); }
         .box span { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
         
-        /* Timer */
         .timer-card { background: linear-gradient(135deg, #fff0f0, #ffebee); border: 2px solid #ffcdd2; text-align: center; }
         .timer-title { font-size: 12px; font-weight: 700; color: var(--danger); text-transform: uppercase; margin-bottom: 10px; }
         .time-box { background: var(--card); border-radius: 8px; width: 60px; padding: 10px 0; display: inline-block; margin: 0 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .time-box .num { font-size: 22px; font-weight: 700; color: var(--danger); }
         .time-box .label { font-size: 10px; color: var(--muted); font-weight: 600; display: block; }
         
-        /* Buttons */
-        .btn {
-            width: 100%; padding: 14px; border-radius: 12px; border: none;
-            font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px;
-            transition: 0.2s;
-        }
+        .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px; transition: 0.2s; }
         .btn:active { transform: scale(0.98); }
         .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(1, 135, 95, 0.3); }
         .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-small { padding: 8px 12px; font-size: 12px; border-radius: 8px; margin-bottom: 5px;}
         
-        /* Packages */
-        .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; cursor: pointer; transition: 0.3s; }
+        .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; cursor: pointer; transition: 0.3s; background: #fff;}
         .pkg-card:active { transform: scale(0.98); }
         .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; }
         .pkg-price { font-size: 20px; font-weight: 700; color: var(--primary); margin: 5px 0; }
+        .pkg-badge { position: absolute; top: 10px; right: -25px; background: var(--primary); color: white; font-size: 10px; padding: 2px 25px; transform: rotate(45deg); font-weight: bold; }
         
-        /* Forms & Chips */
         .form-group { margin-bottom: 15px; text-align: left; }
-        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
-        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; outline: none; }
-        .form-group input:focus { border-color: var(--primary); }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: var(--muted); }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; outline: none; }
+        .form-group input:focus, .form-group textarea:focus { border-color: var(--primary); }
 
-        /* Payment Method Chips */
         .chip-container { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
-        .chip {
-            flex: 1; padding: 10px; text-align: center; border-radius: 8px; border: 2px solid #e8eaed;
-            font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; background: #f8f9fa; color: var(--muted);
-        }
+        .chip { flex: 1; padding: 10px; text-align: center; border-radius: 8px; border: 2px solid #e8eaed; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; background: #f8f9fa; color: var(--muted); }
         .chip.active { border-color: var(--primary); background: #e6f4ea; color: var(--primary); }
 
-        #scrape-form, #packages-section, #payment-form, #admin-section { display: none; }
+        /* Admin Styles */
+        .admin-body { background: var(--admin-bg); color: var(--admin-text); }
+        .admin-card { background: var(--admin-card); border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #3f3f5a; }
+        .admin-card h3 { margin: 0 0 10px 0; font-size: 16px; color: #fff; }
+        .user-list-item { background: #32324b; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #4a4a6a; }
+        .user-list-item span { font-size: 14px; font-weight: 600; }
+        .editor-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .editor-row input { background: #1e1e2d; color: #fff; border: 1px solid #4a4a6a; }
+
+        /* Modals */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+        .modal-content { background-color: var(--card); margin: 20% auto; padding: 20px; border: 1px solid #888; width: 85%; border-radius: 16px; box-sizing: border-box; }
+        .modal-admin { background-color: var(--admin-card); color: #fff; border: 1px solid #4a4a6a; }
+
+        #loading-screen { position: fixed; width: 100%; height: 100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #scrape-form, #packages-section, #payment-form, #admin-section, #user-section { display: none; }
     </style>
 </head>
 <body>
 
-    <div style="text-align: right; margin-bottom: 10px;">
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px; font-weight: 600; color: var(--muted);">Loading Secure Data...</p>
+    </div>
+
+    <!-- Language Toggle -->
+    <div style="text-align: right; margin-bottom: 10px;" id="lang-header">
         <span id="lang-indicator" style="font-size: 12px; font-weight: bold; color: var(--muted);">🌐 Auto Lang</span>
     </div>
 
@@ -82,6 +94,7 @@
                 <div class="box"><h3 id="u-leads">0</h3><span id="t-leads">Leads</span></div>
             </div>
             
+            <!-- Team Info -->
             <div id="team-info" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
                 <span style="font-size: 12px; font-weight: 600; color: var(--primary);" id="t-team-limit">Team Members: 0 / 0</span>
             </div>
@@ -98,8 +111,8 @@
         </div>
 
         <div id="main-buttons">
-            <button class="btn btn-primary" onclick="showScrapeForm()" id="btn-scrape">🚀 Start Scraping</button>
-            <button class="btn btn-outline" onclick="showPackages()" id="btn-sub">💎 Subscription & Packages</button>
+            <button class="btn btn-primary" onclick="showSection('scrape-form')" id="btn-scrape">🚀 Start Scraping</button>
+            <button class="btn btn-outline" onclick="showSection('packages-section')" id="btn-sub">💎 Subscription & Packages</button>
         </div>
 
         <!-- Scraping Form -->
@@ -113,7 +126,6 @@
                     <option value="Hospitals">Hospitals</option>
                     <option value="Real Estate">Real Estate</option>
                     <option value="Plumbers">Plumbers</option>
-                    <option value="Hotels">Hotels</option>
                     <option value="Custom">Custom (Type below)</option>
                 </select>
             </div>
@@ -125,33 +137,21 @@
                 <input type="text" id="loc-input" placeholder="e.g. Dhaka, New York">
             </div>
             <button class="btn btn-primary" onclick="submitScrape()" id="btn-start-now">Start Now</button>
-            <button class="btn btn-outline" onclick="goBack('scrape-form')" id="btn-cancel-1">Cancel</button>
+            <button class="btn btn-outline" onclick="showSection('main-buttons')" id="btn-cancel-1">Cancel</button>
         </div>
 
-        <!-- Packages Section -->
+        <!-- Dynamic Packages Section -->
         <div id="packages-section">
             <h3 style="text-align: center; color: var(--primary);" id="t-pkg-title">Premium Packages</h3>
             <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Click a package to buy.</p>
             
-            <div class="pkg-card" onclick="openPaymentForm('1 Month (Basic)', '500 BDT')">
-                <strong id="p1-title">🥉 1 Month (Basic Plan)</strong>
-                <div class="pkg-price">500 BDT</div>
+            <div id="dynamic-packages-container">
+                <!-- Packages will be injected here by JS -->
             </div>
-            <div class="pkg-card" onclick="openPaymentForm('3 Months (Standard)', '1350 BDT')">
-                <strong id="p2-title">🥈 3 Months (Standard Plan)</strong>
-                <div class="pkg-price">1350 BDT</div>
-                <div style="font-size: 11px; color: var(--danger);">10% Discount!</div>
-            </div>
-            <div class="pkg-card premium" onclick="openPaymentForm('6 Months (Premium)', '2500 BDT')">
-                <div style="position: absolute; top: 10px; right: -25px; background: var(--primary); color: white; font-size: 10px; padding: 2px 25px; transform: rotate(45deg); font-weight: bold;">Best</div>
-                <strong id="p3-title">🥇 6 Months (Premium Plan)</strong>
-                <div class="pkg-price">2500 BDT</div>
-                <div style="font-size: 11px; color: var(--danger);">Max Discount!</div>
-            </div>
-            <button class="btn btn-outline" onclick="goBack('packages-section')" id="btn-cancel-2">Back</button>
+            <button class="btn btn-outline" onclick="showSection('main-buttons')" id="btn-cancel-2">Back</button>
         </div>
 
-        <!-- Payment Form -->
+        <!-- Dynamic Payment Form -->
         <div class="card" id="payment-form">
             <h3 style="margin-top:0; color: var(--primary);" id="t-pay-title">Submit Payment</h3>
             <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px;">
@@ -160,23 +160,17 @@
             </div>
             
             <div style="background: #e8f0fe; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; border: 1px solid #cce0ff;">
-                <strong>Payment Numbers (Send Money):</strong><br>
-                ✅ Bkash: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
-                ✅ Nagad: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
-                ✅ Rocket: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
+                <strong id="t-pay-notice">Payment Numbers:</strong><br>
+                <div id="dynamic-numbers-list"></div>
                 <i style="font-size: 10px; color: var(--muted);">(Tap number to copy)</i>
             </div>
 
-            <!-- Payment Method Selection Chips -->
             <div class="form-group">
-                <label id="t-method">Select Payment Method (পেমেন্ট মাধ্যম)</label>
-                <div class="chip-container">
-                    <div class="chip active" onclick="setMethod(this, 'Bkash')">Bkash</div>
-                    <div class="chip" onclick="setMethod(this, 'Nagad')">Nagad</div>
-                    <div class="chip" onclick="setMethod(this, 'Rocket')">Rocket</div>
-                    <div class="chip" onclick="setMethod(this, 'Binance')">Binance</div>
+                <label id="t-method">Select Payment Method</label>
+                <div class="chip-container" id="dynamic-chips-container">
+                    <!-- Chips injected here -->
                 </div>
-                <input type="hidden" id="selected-method" value="Bkash">
+                <input type="hidden" id="selected-method" value="">
             </div>
 
             <div class="form-group">
@@ -188,25 +182,94 @@
                 <input type="text" id="trx-id" placeholder="e.g. 9H6A2B...">
             </div>
             <button class="btn btn-primary" onclick="submitPayment()" id="btn-submit-pay">Submit to Admin</button>
-            <button class="btn btn-outline" onclick="goBack('payment-form', 'packages-section')" id="btn-cancel-3">Cancel</button>
+            <button class="btn btn-outline" onclick="showSection('packages-section')" id="btn-cancel-3">Cancel</button>
         </div>
     </div>
 
     <!-- ================= ADMIN DASHBOARD ================= -->
-    <div id="admin-section" class="card" style="display: none; text-align: center;">
-        <h2 style="color: var(--text);">👑 Super Admin</h2>
-        <p style="font-size: 13px; color: var(--muted);">Welcome to the Web App.</p>
-        <p style="font-size: 14px; font-weight: 500; color: var(--primary); background: #e8f0fe; padding: 15px; border-radius: 10px;">
-            Please use the <b>Telegram Bot Menu</b> to add users, edit packages, and manage the system.
-        </p>
-        <button class="btn btn-outline" onclick="tg.close()">Close Web App</button>
+    <div id="admin-section">
+        <div class="admin-header">
+            <h2>👑 Super Admin Panel</h2>
+            <p style="margin:0; font-size: 12px; color:#aaa;">Enterprise Management</p>
+        </div>
+
+        <button class="btn btn-primary" onclick="showAdminTab('manage-users')">👥 Manage Users & Time</button>
+        <button class="btn btn-outline" style="color:#fff; border-color:#fff;" onclick="showAdminTab('edit-config')">📝 Edit Packages & Payments</button>
+
+        <!-- Manage Users Tab -->
+        <div id="manage-users" class="admin-card" style="display: none;">
+            <h3>User Management</h3>
+            <p style="font-size: 12px; color: #aaa;">Click a user to manage their subscription or data.</p>
+            <div id="admin-user-list">
+                <!-- Users injected here -->
+            </div>
+            <button class="btn btn-danger btn-small" onclick="hideAdminTabs()" style="margin-top: 15px;">Close</button>
+        </div>
+
+        <!-- Edit Config Tab -->
+        <div id="edit-config" class="admin-card" style="display: none;">
+            <h3>Dynamic Config Editor</h3>
+            <p style="font-size: 12px; color: #aaa;">Edit your packages and payment methods directly.</p>
+            
+            <div class="form-group">
+                <label style="color:#fff;">Raw JSON Configuration (Advanced)</label>
+                <textarea id="config-json-editor" rows="15" style="background:#1e1e2d; color:#fff; border-color:#4a4a6a; font-family:monospace; font-size: 11px;"></textarea>
+            </div>
+            <p style="font-size:10px; color:#aaa;">* Make sure to keep the JSON format valid before saving. Duration is in MINUTES (e.g. 1 Month = 43200 minutes).</p>
+            
+            <button class="btn btn-primary" onclick="saveAdminConfig()">💾 Save Configuration</button>
+            <button class="btn btn-danger btn-small" onclick="hideAdminTabs()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="userModal" class="modal">
+        <div class="modal-content modal-admin">
+            <h3 id="modal-u-name" style="margin-top:0;">User Name</h3>
+            <p style="font-size:12px; margin-bottom: 20px;">ID: <span id="modal-u-id"></span> | Leads: <span id="modal-u-leads"></span></p>
+            
+            <div class="form-group">
+                <label style="color:#ccc;">Add/Remove Time</label>
+                <div class="editor-row">
+                    <input type="number" id="time-amount" placeholder="Amount (e.g. 30)">
+                    <select id="time-unit" style="background:#1e1e2d; color:#fff; border:1px solid #4a4a6a;">
+                        <option value="days">Days</option>
+                        <option value="months">Months</option>
+                        <option value="hours">Hours</option>
+                        <option value="minutes">Minutes</option>
+                    </select>
+                </div>
+                <p style="font-size:10px; color:#aaa;">* Use negative number (e.g. -10) to reduce time.</p>
+                <button class="btn btn-primary btn-small" onclick="adminSubmitTime()">⏳ Update Time</button>
+            </div>
+
+            <hr style="border-color:#3f3f5a; margin: 20px 0;">
+            <button class="btn btn-outline btn-small" style="color:#ffcc00; border-color:#ffcc00;" onclick="adminAction('clear_leads')">🗑️ Clear Leads</button>
+            <button class="btn btn-danger btn-small" onclick="adminAction('delete_user')">❌ Delete User Entirely</button>
+            <button class="btn btn-outline btn-small" style="margin-top: 15px;" onclick="document.getElementById('userModal').style.display='none'">Close</button>
+        </div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Language Dictionary
+        const urlParams = new URLSearchParams(window.location.search);
+        const uid = urlParams.get('uid') || '000';
+        const uName = decodeURIComponent(urlParams.get('name') || 'User');
+        const role = urlParams.get('role') || 'user'; 
+        const endsAtStr = urlParams.get('ends');
+        const botUsername = urlParams.get('bot') || '';
+        
+        let fbUrl = urlParams.get('fb') || '';
+        fbUrl = decodeURIComponent(fbUrl).replace(/\/$/, "");
+
+        // Global Data
+        let appConfig = null;
+        let usersData = null;
+        let activeModalUid = null;
+
+        // Dictionaries
         const dict = {
             en: {
                 greeting: "Hello,", searches: "Searches", leads: "Leads", timeLeft: "Subscription Time Left",
@@ -215,7 +278,8 @@
                 scrapeTitle: "New Search", cat: "Category", loc: "Location", startNow: "Start Now", cancel: "Cancel",
                 pkgTitle: "Premium Packages", pkgDesc: "Select a package to upgrade your account.",
                 payTitle: "Submit Payment", selectedPkg: "Package:", amount: "Amount:",
-                method: "Select Payment Method", sender: "Sender Number", trxid: "Transaction ID (TrxID)", submitPay: "Submit Request"
+                method: "Select Payment Method", sender: "Sender Number", trxid: "Transaction ID (TrxID)", submitPay: "Submit Request",
+                payNotice: "Payment Numbers (Send Money):"
             },
             bn: {
                 greeting: "স্বাগতম,", searches: "সার্চ", leads: "লিড", timeLeft: "সাবস্ক্রিপশনের মেয়াদ আছে",
@@ -224,43 +288,60 @@
                 scrapeTitle: "নতুন সার্চ", cat: "ক্যাটাগরি", loc: "লোকেশন (জায়গার নাম)", startNow: "শুরু করুন", cancel: "বাতিল",
                 pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "অ্যাকাউন্ট আপডেট করতে প্যাকেজ সিলেক্ট করুন।",
                 payTitle: "পেমেন্ট সাবমিট করুন", selectedPkg: "প্যাকেজ:", amount: "পরিমাণ:",
-                method: "পেমেন্ট মেথড নির্বাচন করুন", sender: "যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "ট্রানজেকশন আইডি (TrxID)", submitPay: "অ্যাডমিনকে পাঠান"
+                method: "পেমেন্ট মেথড নির্বাচন করুন", sender: "যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "ট্রানজেকশন আইডি (TrxID)", submitPay: "অ্যাডমিনকে পাঠান",
+                payNotice: "পেমেন্ট মাধ্যম (Send Money):"
             }
         };
 
-        // Extract Params from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const uid = urlParams.get('uid') || '000';
-        const uName = decodeURIComponent(urlParams.get('name') || 'User');
-        const role = urlParams.get('role') || 'user'; 
-        const endsAtStr = urlParams.get('ends');
-        const teamLimit = parseInt(urlParams.get('team_limit') || '0');
-        const teamAdded = parseInt(urlParams.get('team_added') || '0');
-
-        // Set Language
         let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
-        document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
-        applyLanguage(userLang);
 
-        // Load Role based UI
-        if (role === 'admin') {
-            document.getElementById('admin-section').style.display = 'block';
-            document.getElementById('user-section').style.display = 'none';
-        } else {
-            document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
-            document.getElementById('u-id-text').innerText = "UID: " + uid;
-            document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
-            document.getElementById('u-leads').innerText = urlParams.get('leads') || '0';
+        // 🌟 INIT APP: Fetch Config from Server
+        async function initApp() {
+            try {
+                // Fetch dynamic config from Python Server
+                const response = await fetch(`/api/config?uid=${uid}`);
+                const resData = await response.json();
+                
+                if(resData.status === 'success') {
+                    appConfig = resData.data.config;
+                    if(role === 'admin') usersData = resData.data.users;
+                }
 
-            if (teamLimit > 0) {
-                document.getElementById('team-info').style.display = 'block';
-                document.getElementById('t-team-limit').innerText = userLang === 'bn' ? 
-                    `আপনার টিম মেম্বার: ${teamAdded} / ${teamLimit}` : `Team Members: ${teamAdded} / ${teamLimit}`;
+                document.getElementById('loading-screen').style.display = 'none';
+
+                if (role === 'admin') {
+                    document.body.classList.add('admin-body');
+                    document.getElementById('admin-section').style.display = 'block';
+                    document.getElementById('lang-header').style.display = 'none';
+                } else {
+                    document.getElementById('user-section').style.display = 'block';
+                    document.getElementById('main-buttons').style.display = 'block';
+                    document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
+                    
+                    document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
+                    document.getElementById('u-id-text').innerText = "UID: " + uid;
+                    document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
+                    document.getElementById('u-leads').innerText = urlParams.get('leads') || '0';
+
+                    const teamLimit = parseInt(urlParams.get('team_limit') || '0');
+                    if (teamLimit > 0) {
+                        document.getElementById('team-info').style.display = 'block';
+                        document.getElementById('t-team-limit').innerText = userLang === 'bn' ? 
+                            `আপনার টিম মেম্বার: ${urlParams.get('team_added')} / ${teamLimit}` : `Team Members: ${urlParams.get('team_added')} / ${teamLimit}`;
+                    }
+
+                    applyLanguage(userLang);
+                    buildPackagesUI();
+                    buildPaymentUI();
+                    startTimer(endsAtStr);
+                }
+
+            } catch (err) {
+                alert("Error connecting to secure server. Please refresh.");
             }
-            startTimer(endsAtStr);
         }
 
-        // Apply Texts
+        // ================= USER FUNCTIONS =================
         function applyLanguage(l) {
             document.getElementById('t-searches').innerText = dict[l].searches;
             document.getElementById('t-leads').innerText = dict[l].leads;
@@ -287,6 +368,42 @@
             document.getElementById('t-sender').innerText = dict[l].sender;
             document.getElementById('t-trxid').innerText = dict[l].trxid;
             document.getElementById('btn-submit-pay').innerText = dict[l].submitPay;
+            document.getElementById('t-pay-notice').innerText = dict[l].payNotice;
+        }
+
+        function buildPackagesUI() {
+            const container = document.getElementById('dynamic-packages-container');
+            container.innerHTML = "";
+            appConfig.packages.forEach((pkg, index) => {
+                let badgeHtml = pkg.badge ? `<div class="pkg-badge">${pkg.badge}</div>` : '';
+                let extraClass = pkg.badge ? 'premium' : '';
+                container.innerHTML += `
+                    <div class="pkg-card ${extraClass}" onclick="openPaymentForm('${pkg.name}', '${pkg.price}')">
+                        ${badgeHtml}
+                        <strong>${pkg.name}</strong>
+                        <div class="pkg-price">${pkg.price}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function buildPaymentUI() {
+            const listContainer = document.getElementById('dynamic-numbers-list');
+            const chipsContainer = document.getElementById('dynamic-chips-container');
+            listContainer.innerHTML = ""; chipsContainer.innerHTML = "";
+
+            appConfig.methods.forEach((m, index) => {
+                // List item
+                listContainer.innerHTML += `
+                    <div style="margin-bottom:5px;">✅ ${m.name}: 
+                        <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('${m.number}')">${m.number}</b>
+                    </div>`;
+                
+                // Chip
+                let activeClass = index === 0 ? 'active' : '';
+                if(index === 0) document.getElementById('selected-method').value = m.name;
+                chipsContainer.innerHTML += `<div class="chip ${activeClass}" onclick="setMethod(this, '${m.name}')">${m.name}</div>`;
+            });
         }
 
         function startTimer(ends) {
@@ -315,64 +432,50 @@
             }
         }
 
-        function showScrapeForm() { goBack('main-buttons', 'scrape-form'); }
-        function showPackages() { goBack('main-buttons', 'packages-section'); }
-        function openPaymentForm(plan, price) {
-            goBack('packages-section', 'payment-form');
-            document.getElementById('selected-plan').innerText = plan;
-            document.getElementById('selected-price').innerText = price;
-        }
-        function goBack(currentId, targetId = 'main-buttons') {
-            document.getElementById(currentId).style.display = 'none';
-            document.getElementById(targetId).style.display = 'block';
-        }
-        function toggleCustomCat() {
-            document.getElementById('custom-cat-group').style.display = document.getElementById('cat-select').value === 'Custom' ? 'block' : 'none';
-        }
-        
         function copyNumber(num) {
             navigator.clipboard.writeText(num);
             tg.showAlert(userLang === 'bn' ? `নাম্বার কপি করা হয়েছে: ${num}` : `Number Copied: ${num}`);
         }
-
         function setMethod(element, method) {
             document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
             document.getElementById('selected-method').value = method;
         }
 
-        // ================= 100% CRASH-PROOF DIRECT API COMMUNICATION =================
+        function showSection(id) {['main-buttons', 'scrape-form', 'packages-section', 'payment-form'].forEach(x => {
+                document.getElementById(x).style.display = (x === id) ? 'block' : 'none';
+            });
+        }
+        function showScrapeForm() { showSection('scrape-form'); }
+        function showPackages() { showSection('packages-section'); }
+        function openPaymentForm(plan, price) {
+            showSection('payment-form');
+            document.getElementById('selected-plan').innerText = plan;
+            document.getElementById('selected-price').innerText = price;
+        }
+        function goBack(currentId) { showSection('main-buttons'); }
+
+        function toggleCustomCat() {
+            document.getElementById('custom-cat-group').style.display = document.getElementById('cat-select').value === 'Custom' ? 'block' : 'none';
+        }
+
+        // --- Crash-Proof User Submissions via Firebase ---
         async function submitScrape() {
             let cat = document.getElementById('cat-select').value;
             if (cat === 'Custom') cat = document.getElementById('custom-cat').value;
             let loc = document.getElementById('loc-input').value;
+            if (!cat || !loc) { tg.showAlert(userLang === 'bn' ? "ক্যাটাগরি এবং লোকেশন দিন!" : "Provide Category and Location!"); return; }
             
-            if (!cat || !loc) { 
-                tg.showAlert(userLang === 'bn' ? "ক্যাটাগরি এবং লোকেশন দিন!" : "Provide Category and Location!"); 
-                return; 
-            }
-            
-            let btn = document.getElementById('btn-start-now');
-            btn.innerText = "Processing..."; 
-            btn.disabled = true;
-
+            document.getElementById('btn-start-now').innerText = "Processing..."; document.getElementById('btn-start-now').disabled = true;
             let query = `${cat} in ${loc}`;
             
-            try {
-                // Send directly to our Python backend server running on Render
-                await fetch('/api/scrape', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: uid, uname: uName, query: query })
+            if(fbUrl) {
+                await fetch(`${fbUrl}/pending_requests/${uid}.json`, {
+                    method: 'PUT', body: JSON.stringify({ action: 'scrape', query: query, time: Date.now() })
                 });
-                
-                // Immediately close WebApp, Bot will reply in the chat!
-                tg.close();
-            } catch (error) {
-                tg.showAlert("Error sending request. Please try again.");
-                btn.innerText = dict[userLang].startNow;
-                btn.disabled = false;
             }
+            tg.openTelegramLink(`https://t.me/${botUsername}?text=/start%20do_scrape`);
+            tg.close();
         }
 
         async function submitPayment() {
@@ -382,36 +485,114 @@
             let senderNum = document.getElementById('sender-number').value;
             let trxid = document.getElementById('trx-id').value;
 
-            if (!senderNum || !trxid) { 
-                tg.showAlert(userLang === 'bn' ? "নাম্বার এবং TrxID দিন!" : "Provide Number and TrxID!"); 
-                return; 
-            }
+            if (!senderNum || !trxid) { tg.showAlert(userLang === 'bn' ? "নাম্বার এবং TrxID দিন!" : "Provide Number and TrxID!"); return; }
 
-            let btn = document.getElementById('btn-submit-pay');
-            btn.innerText = "Sending to Admin..."; 
-            btn.disabled = true;
-
+            document.getElementById('btn-submit-pay').innerText = "Sending..."; document.getElementById('btn-submit-pay').disabled = true;
             let fullSender = `${method} - ${senderNum}`;
 
-            try {
-                // Send directly to our Python backend server
-                await fetch('/api/payment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        uid: uid, uname: uName, 
-                        plan: plan, price: price, 
-                        sender: fullSender, trxid: trxid 
+            if(fbUrl) {
+                await fetch(`${fbUrl}/pending_requests/${uid}.json`, {
+                    method: 'PUT', body: JSON.stringify({ 
+                        action: 'payment', plan: plan, price: price, sender: fullSender, trxid: trxid, time: Date.now() 
                     })
                 });
+            }
+            tg.openTelegramLink(`https://t.me/${botUsername}?text=/start%20do_payment`);
+            tg.close();
+        }
 
-                tg.close();
-            } catch (error) {
-                tg.showAlert("Error sending payment. Please try again.");
-                btn.innerText = dict[userLang].submitPay;
-                btn.disabled = false;
+        // ================= ADMIN FUNCTIONS =================
+        function showAdminTab(id) {['manage-users', 'edit-config'].forEach(x => {
+                document.getElementById(x).style.display = (x === id) ? 'block' : 'none';
+            });
+            if(id === 'manage-users') renderUserList();
+            if(id === 'edit-config') {
+                document.getElementById('config-json-editor').value = JSON.stringify(appConfig, null, 4);
             }
         }
+        function hideAdminTabs() {
+            document.getElementById('manage-users').style.display = 'none';
+            document.getElementById('edit-config').style.display = 'none';
+        }
+
+        function renderUserList() {
+            const container = document.getElementById('admin-user-list');
+            container.innerHTML = "";
+            if(!usersData || Object.keys(usersData).length === 0) {
+                container.innerHTML = "<p>No users found.</p>"; return;
+            }
+            for (let [uId, uData] of Object.entries(usersData)) {
+                let endDt = uData.sub_ends ? new Date(uData.sub_ends).toLocaleDateString() : 'N/A';
+                container.innerHTML += `
+                    <div class="user-list-item" onclick="openUserModal('${uId}', '${uData.name}', ${uData.active_leads || 0})">
+                        <div>
+                            <span style="color:#01875f;">${uData.name}</span><br>
+                            <small style="color:#aaa; font-weight:normal;">Expires: ${endDt}</small>
+                        </div>
+                        <span style="background:#4a4a6a; padding:5px 10px; border-radius:5px; font-size:11px;">Manage ⚙️</span>
+                    </div>
+                `;
+            }
+        }
+
+        function openUserModal(id, name, leads) {
+            activeModalUid = id;
+            document.getElementById('modal-u-name').innerText = name;
+            document.getElementById('modal-u-id').innerText = id;
+            document.getElementById('modal-u-leads').innerText = leads;
+            document.getElementById('userModal').style.display = 'block';
+        }
+
+        async function saveAdminConfig() {
+            let rawJson = document.getElementById('config-json-editor').value;
+            try {
+                let newConfig = JSON.parse(rawJson);
+                await fetch('/api/admin/config', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: uid, config: newConfig })
+                });
+                tg.showAlert("Configuration Saved Successfully!");
+                appConfig = newConfig; // update locally
+                hideAdminTabs();
+            } catch(e) {
+                tg.showAlert("Invalid JSON format! Please check for missing commas or quotes.");
+            }
+        }
+
+        async function adminSubmitTime() {
+            let amount = document.getElementById('time-amount').value;
+            let unit = document.getElementById('time-unit').value;
+            if(!amount) return;
+
+            let minutes = parseInt(amount);
+            if(unit === 'hours') minutes *= 60;
+            if(unit === 'days') minutes *= 1440;
+            if(unit === 'months') minutes *= 43200;
+
+            await fetch('/api/admin/user', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: uid, action: 'add_time', target_uid: activeModalUid, minutes: minutes })
+            });
+            tg.showAlert("User Time Updated!");
+            document.getElementById('userModal').style.display = 'none';
+        }
+
+        async function adminAction(action) {
+            let confirmMsg = action === 'delete_user' ? "Are you sure you want to permanently delete this user?" : "Are you sure you want to clear their leads?";
+            if(confirm(confirmMsg)) {
+                await fetch('/api/admin/user', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: uid, action: action, target_uid: activeModalUid })
+                });
+                tg.showAlert("Action completed!");
+                document.getElementById('userModal').style.display = 'none';
+                hideAdminTabs();
+            }
+        }
+
+        // Start initialization on page load
+        window.onload = initApp;
+
     </script>
 </body>
 </html>
