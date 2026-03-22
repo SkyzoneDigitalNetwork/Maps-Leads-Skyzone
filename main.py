@@ -798,7 +798,7 @@ async def main_async():
     except Exception as e:
         logger.error(f"Error fetching bot info: {e}")
 
-    asyncio.create_task(keep_alive_task(None))
+    asyncio.create_task(keep_alive_task())
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("approve_sub", approve_sub_cmd))
