@@ -25,47 +25,62 @@
         .box h3 { margin: 0; font-size: 22px; color: var(--text); }
         .box span { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
         
+        /* Timer */
         .timer-card { background: linear-gradient(135deg, #fff0f0, #ffebee); border: 2px solid #ffcdd2; text-align: center; }
         .timer-title { font-size: 12px; font-weight: 700; color: var(--danger); text-transform: uppercase; margin-bottom: 10px; }
         .time-box { background: var(--card); border-radius: 8px; width: 60px; padding: 10px 0; display: inline-block; margin: 0 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .time-box .num { font-size: 22px; font-weight: 700; color: var(--danger); }
         .time-box .label { font-size: 10px; color: var(--muted); font-weight: 600; display: block; }
         
+        /* Buttons */
         .btn {
             width: 100%; padding: 14px; border-radius: 12px; border: none;
             font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;
         }
+        .btn:active { transform: scale(0.98); }
         .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(1, 135, 95, 0.3); }
         .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
         
-        .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; cursor: pointer; }
+        /* Packages */
+        .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; cursor: pointer; transition: 0.3s; }
+        .pkg-card:active { transform: scale(0.98); }
         .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; }
         .pkg-price { font-size: 20px; font-weight: 700; color: var(--primary); margin: 5px 0; }
         
+        /* Forms */
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
         .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
         
-        #scrape-form, #packages-section, #payment-form { display: none; }
+        #scrape-form, #packages-section, #payment-form, #admin-section { display: none; }
     </style>
 </head>
 <body>
 
+    <!-- Language Toggle -->
     <div style="text-align: right; margin-bottom: 10px;">
         <span id="lang-indicator" style="font-size: 12px; font-weight: bold; color: var(--muted);">🌐 Auto Lang</span>
     </div>
 
-    <!-- USER DASHBOARD -->
+    <!-- ================= USER DASHBOARD ================= -->
     <div id="user-section">
         <div class="card profile-card">
             <h2 id="u-greeting">Hello, User</h2>
             <p id="u-id-text" style="margin: 0; font-size: 12px; color: var(--muted);">ID: 00000000</p>
+            
             <div class="grid-2">
                 <div class="box"><h3 id="u-searches">0</h3><span id="t-searches">Searches</span></div>
                 <div class="box"><h3 id="u-leads">0</h3><span id="t-leads">Leads</span></div>
             </div>
+            
+            <!-- Team Info -->
+            <div id="team-info" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--primary);" id="t-team-limit">Team Members: 0 / 0</span>
+            </div>
         </div>
 
+        <!-- VIP Timer -->
         <div class="card timer-card" id="timer-container">
             <div class="timer-title" id="t-time-left">Subscription Time Left</div>
             <div id="countdown">
@@ -76,6 +91,7 @@
             <div id="expired-msg" style="display:none; font-size: 18px; font-weight: bold; color: var(--danger);"></div>
         </div>
 
+        <!-- Main Action Buttons -->
         <div id="main-buttons">
             <button class="btn btn-primary" onclick="showScrapeForm()" id="btn-scrape">🚀 Start Scraping</button>
             <button class="btn btn-outline" onclick="showPackages()" id="btn-sub">💎 Subscription & Packages</button>
@@ -92,6 +108,7 @@
                     <option value="Hospitals">Hospitals</option>
                     <option value="Real Estate">Real Estate</option>
                     <option value="Plumbers">Plumbers</option>
+                    <option value="Hotels">Hotels</option>
                     <option value="Custom">Custom (Type below)</option>
                 </select>
             </div>
@@ -150,10 +167,21 @@
         </div>
     </div>
 
+    <!-- ================= ADMIN DASHBOARD ================= -->
+    <div id="admin-section" class="card" style="text-align: center;">
+        <h2 style="color: var(--text);">👑 Super Admin</h2>
+        <p style="font-size: 13px; color: var(--muted);">Welcome to the Web App.</p>
+        <p style="font-size: 14px; font-weight: 500; color: var(--primary); background: #e8f0fe; padding: 15px; border-radius: 10px;">
+            Please use the <b>Telegram Bot Menu</b> to add users, edit packages, and manage the system.
+        </p>
+        <button class="btn btn-outline" onclick="tg.close()">Close Web App</button>
+    </div>
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        // --- Translations Dictionary ---
         const dict = {
             en: {
                 greeting: "Hello,", searches: "Searches", leads: "Leads", timeLeft: "Subscription Time Left",
@@ -175,24 +203,42 @@
             }
         };
 
+        // --- Get URL Params ---
         const urlParams = new URLSearchParams(window.location.search);
         const uid = urlParams.get('uid') || '000';
         const uName = decodeURIComponent(urlParams.get('name') || 'User');
+        const role = urlParams.get('role') || 'user'; 
         const endsAtStr = urlParams.get('ends');
+        const teamLimit = parseInt(urlParams.get('team_limit') || '0');
+        const teamAdded = parseInt(urlParams.get('team_added') || '0');
         const botUsername = urlParams.get('bot') || '';
         const fbUrl = decodeURIComponent(urlParams.get('fb') || '');
 
+        // --- Language Detection ---
         let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
         document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
         applyLanguage(userLang);
 
-        document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
-        document.getElementById('u-id-text').innerText = "ID: " + uid;
-        document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
-        document.getElementById('u-leads').innerText = urlParams.get('leads') || '0';
+        // --- Render UI ---
+        if (role === 'admin') {
+            document.getElementById('user-section').style.display = 'none';
+            document.getElementById('admin-section').style.display = 'block';
+        } else {
+            document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
+            document.getElementById('u-id-text').innerText = "ID: " + uid;
+            document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
+            document.getElementById('u-leads').innerText = urlParams.get('leads') || '0';
 
-        startTimer(endsAtStr, userLang);
+            if (teamLimit > 0) {
+                document.getElementById('team-info').style.display = 'block';
+                document.getElementById('t-team-limit').innerText = userLang === 'bn' ? 
+                    `আপনার টিম মেম্বার: ${teamAdded} / ${teamLimit}` : `Team Members: ${teamAdded} / ${teamLimit}`;
+            }
 
+            startTimer(endsAtStr, userLang);
+        }
+
+        // --- Functions ---
         function applyLanguage(l) {
             document.getElementById('t-searches').innerText = dict[l].searches;
             document.getElementById('t-leads').innerText = dict[l].leads;
@@ -266,7 +312,11 @@
             let cat = document.getElementById('cat-select').value;
             if (cat === 'Custom') cat = document.getElementById('custom-cat').value;
             let loc = document.getElementById('loc-input').value;
-            if (!cat || !loc) { tg.showAlert(userLang === 'bn' ? "ক্যাটাগরি এবং লোকেশন দিন!" : "Provide Category and Location!"); return; }
+            
+            if (!cat || !loc) { 
+                tg.showAlert(userLang === 'bn' ? "ক্যাটাগরি এবং লোকেশন দিন!" : "Provide Category and Location!"); 
+                return; 
+            }
             
             let btn = document.getElementById('btn-start-now');
             btn.innerText = "Processing..."; btn.disabled = true;
@@ -281,7 +331,7 @@
                 });
             }
             
-            // Tell Bot to check Firebase (No long data, so no crash!)
+            // Tell Bot to check Firebase
             tg.openTelegramLink(`https://t.me/${botUsername}?text=/start%20do_scrape`);
             tg.close();
         }
@@ -292,7 +342,10 @@
             let sender = document.getElementById('sender-number').value;
             let trxid = document.getElementById('trx-id').value;
 
-            if (!sender || !trxid) { tg.showAlert(userLang === 'bn' ? "নাম্বার এবং TrxID দিন!" : "Provide Number and TrxID!"); return; }
+            if (!sender || !trxid) { 
+                tg.showAlert(userLang === 'bn' ? "নাম্বার এবং TrxID দিন!" : "Provide Number and TrxID!"); 
+                return; 
+            }
 
             let btn = document.getElementById('btn-submit-pay');
             btn.innerText = "Processing..."; btn.disabled = true;
