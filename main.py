@@ -39,8 +39,8 @@ FB_URL = os.environ.get('FIREBASE_DATABASE_URL')
 RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
 PORT = int(os.environ.get('PORT', '8080'))
 
-# Web App URL
-WEB_APP_URL = RENDER_URL if RENDER_URL else "http://localhost:8080"
+# WEB_APP_URL will automatically use Render's URL
+WEB_APP_URL = RENDER_URL if RENDER_URL else f"http://localhost:{PORT}"
 
 # --- Global State ---
 active_tasks = {} 
@@ -96,14 +96,20 @@ def check_subscription(uid):
     if datetime.now() > sub_ends: return False, "expired"
     return True, sub_ends
 
-async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
+async def post_init(app: Application):
+    global BOT_USERNAME
+    bot_info = await app.bot.get_me()
+    BOT_USERNAME = bot_info.username
+    logger.info(f"🤖 Bot Username: @{BOT_USERNAME}")
+
+async def keep_alive_task():
     if not RENDER_URL: return
     while True:
         try: requests.get(RENDER_URL, timeout=10)
         except: pass
         await asyncio.sleep(600)
 
-async def analyze_with_ai(context, is_error=False):
+async def analyze_with_ai(bot, is_error=False):
     if not GROQ_API_KEY or not LOG_GROUP_ID: return
     if not recent_logs: return
 
@@ -124,21 +130,21 @@ async def analyze_with_ai(context, is_error=False):
         if response.status_code == 200:
             ai_reply = response.json()['choices'][0]['message']['content']
             header = "🚨 **AI EMERGENCY ALERT:**" if is_error else "🧠 **AI Auto Analysis Report:**"
-            await context.bot.send_message(chat_id=LOG_GROUP_ID, text=f"{header}\n\n{ai_reply}", parse_mode='Markdown')
+            await bot.send_message(chat_id=LOG_GROUP_ID, text=f"{header}\n\n{ai_reply}", parse_mode='Markdown')
     except Exception as e:
         logger.error(f"AI Error: {e}")
 
-async def send_log(context, user_name, user_id, action):
+async def send_log(bot, user_name, user_id, action):
     log_text = f"👤 **{user_name}** (`{user_id}`)\n📌 অ্যাকশন: {action}\n🕒 সময়: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     if LOG_GROUP_ID:
-        try: await context.bot.send_message(chat_id=LOG_GROUP_ID, text=log_text, parse_mode='Markdown')
+        try: await bot.send_message(chat_id=LOG_GROUP_ID, text=log_text, parse_mode='Markdown')
         except: pass
 
     recent_logs.append(log_text)
     if "এরর" in action or "Error" in action or "Executable doesn't exist" in action: 
-        asyncio.create_task(analyze_with_ai(context, is_error=True))
+        asyncio.create_task(analyze_with_ai(bot, is_error=True))
     elif len(recent_logs) >= 15: 
-        asyncio.create_task(analyze_with_ai(context, is_error=False))
+        asyncio.create_task(analyze_with_ai(bot, is_error=False))
 
 async def extract_email(url):
     try:
@@ -153,8 +159,8 @@ async def extract_email(url):
     return "N/A"
 
 # --- Scraper Engine ---
-async def scraper_worker(query, user_id, user_name, context):
-    await send_log(context, user_name, user_id, f"স্ক্র্যাপিং শুরু করেছে: `{query}`")
+async def scraper_worker(query, user_id, user_name, bot):
+    await send_log(bot, user_name, user_id, f"স্ক্র্যাপিং শুরু করেছে: `{query}`")
     
     if not is_super_admin(user_id):
         user_ref = db.reference(f'bot_users/{user_id}')
@@ -165,7 +171,7 @@ async def scraper_worker(query, user_id, user_name, context):
     leads_found = 0
     session_leads =[] 
 
-    status_msg = await context.bot.send_message(
+    status_msg = await bot.send_message(
         chat_id=user_id, 
         text=f"🚀 **{query}** এর জন্য ম্যাপে খোঁজা হচ্ছে...\nদয়া করে অপেক্ষা করুন।", 
         parse_mode='Markdown'
@@ -191,7 +197,7 @@ async def scraper_worker(query, user_id, user_name, context):
             place_urls = list(set([await place.get_attribute('href') for place in places if await place.get_attribute('href')]))
             
             total_places = len(place_urls)
-            await context.bot.edit_message_text(
+            await bot.edit_message_text(
                 chat_id=user_id, message_id=status_msg.message_id, 
                 text=f"🔍 **{total_places}** টি বিজনেস পাওয়া গেছে।\nডেটা সেভ করা হচ্ছে...", parse_mode='Markdown'
             )
@@ -200,7 +206,7 @@ async def scraper_worker(query, user_id, user_name, context):
                 if user_id not in active_tasks: break
                 if idx % 3 == 0 or idx == 0:
                     try: 
-                        await context.bot.edit_message_text(
+                        await bot.edit_message_text(
                             chat_id=user_id, message_id=status_msg.message_id, 
                             text=f"⏳ **লাইভ স্ক্র্যাপিং...**\n🎯 টার্গেট: `{query}`\n🔍 পাওয়া গেছে: **{total_places}**\n🔄 চেক: **{idx}**\n✅ সেভ: **{leads_found}**", 
                             parse_mode='Markdown'
@@ -275,7 +281,6 @@ async def scraper_worker(query, user_id, user_name, context):
                     
                     web_el = await page.query_selector('a[data-item-id="authority"]')
                     website = await web_el.get_attribute('href') if web_el else "N/A"
-                    
                     email = await extract_email(website) if website != "N/A" else "N/A"
                     
                     safe_key = re.sub(r'\D', '', phone) if phone != "N/A" else re.sub(r'[^a-zA-Z0-9]', '', name)
@@ -297,8 +302,8 @@ async def scraper_worker(query, user_id, user_name, context):
             await browser.close()
             
     except Exception as e:
-        await send_log(context, user_name, user_id, f"❌ স্ক্র্যাপিং এরর: {str(e)[:100]}")
-        try: await context.bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"❌ স্ক্র্যাপিং এরর।")
+        await send_log(bot, user_name, user_id, f"❌ স্ক্র্যাপিং এরর: {str(e)[:100]}")
+        try: await bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"❌ স্ক্র্যাপিং এরর।")
         except: pass
         if user_id in active_tasks: del active_tasks[user_id]
         return
@@ -311,7 +316,7 @@ async def scraper_worker(query, user_id, user_name, context):
         user_ref.update({'lt_leads': current_leads + leads_found})
 
     try:
-        await context.bot.edit_message_text(
+        await bot.edit_message_text(
             chat_id=user_id, message_id=status_msg.message_id, 
             text=f"✅ **স্ক্র্যাপিং সম্পন্ন!**\n🎯 টার্গেট: `{query}`\n📥 নতুন লিড: **{leads_found}** টি।\n\nঅটোমেটিক ফাইল তৈরি করা হচ্ছে...", parse_mode='Markdown'
         )
@@ -329,9 +334,9 @@ async def scraper_worker(query, user_id, user_name, context):
             ])
         output = io.BytesIO(si.getvalue().encode('utf-8'))
         output.name = f"Report_{query.replace(' ', '_')}_{datetime.now().strftime('%H%M%S')}.csv"
-        await context.bot.send_document(user_id, output, caption=f"📊 **অটোমেটিক রিপোর্ট:** `{query}`\nএই সেশনে পাওয়া **{leads_found}** টি নতুন লিড।")
+        await bot.send_document(user_id, output, caption=f"📊 **অটোমেটিক রিপোর্ট:** `{query}`\nএই সেশনে পাওয়া **{leads_found}** টি নতুন লিড।")
 
-    await send_log(context, user_name, user_id, f"স্ক্র্যাপিং শেষ। নতুন লিড: {leads_found}")
+    await send_log(bot, user_name, user_id, f"স্ক্র্যাপিং শেষ। নতুন লিড: {leads_found}")
 
 # --- Menus ---
 def get_main_menu(uid):
@@ -343,9 +348,16 @@ def get_main_menu(uid):
     team_added = user_data.get('team_added', 0) if user_data else 0
     role = 'admin' if is_super_admin(uid) else 'user'
     
-    web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
+    # 🌟 Generate robust Web App URL pointing back to our own server!
+    web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}"
     
-    keyboard = [[InlineKeyboardButton("🌐 প্রোফাইল ও ড্যাশবোর্ড (Web App)", web_app=WebAppInfo(url=web_url))]]
+    keyboard =[]
+    
+    # 🌟 Super Admin or Authorized User Web App Menu
+    if is_super_admin(uid):
+        keyboard.append([InlineKeyboardButton("🌐 অ্যাডমিন প্যানেল (Web App)", web_app=WebAppInfo(url=web_url))])
+    else:
+        keyboard.append([InlineKeyboardButton("🌐 প্রোফাইল ও ড্যাশবোর্ড (Web App)", web_app=WebAppInfo(url=web_url))])
     
     hidden_btns = db.reference('bot_settings/hidden_buttons').get() or {}
     
@@ -364,13 +376,13 @@ def get_main_menu(uid):
     keyboard.append([InlineKeyboardButton("🔄 রিফ্রেশ (Restart)", callback_data='refresh_bot')])
 
     if is_super_admin(uid):
-        keyboard.append([InlineKeyboardButton("👑 সুপার অ্যাডমিন প্যানেল", callback_data='super_admin_panel')])
+        keyboard.append([InlineKeyboardButton("👑 সুপার অ্যাডমিন কন্ট্রোল", callback_data='super_admin_panel')])
     
     return InlineKeyboardMarkup(keyboard)
 
 def get_expired_menu(uid):
     user_data = get_user_data(uid)
-    web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&ends=expired&role=user&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
+    web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&ends=expired&role=user"
     return InlineKeyboardMarkup([[InlineKeyboardButton("🌐 ওয়েব অ্যাপ (প্যাকেজ ও পেমেন্ট)", web_app=WebAppInfo(url=web_url))]])
 
 async def show_toggle_menu(message_obj, uid):
@@ -387,42 +399,7 @@ async def show_toggle_menu(message_obj, uid):
 # --- Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
-    uname = update.effective_user.first_name
-    text = update.message.text.strip() if update.message else ""
     
-    # 🌟 CRASH-PROOF DEEP LINK CATCHER (From Web App via Firebase)
-    if text == '/start do_scrape':
-        req = db.reference(f'pending_requests/{uid}').get()
-        if req and req.get('action') == 'scrape':
-            query = req.get('query')
-            db.reference(f'pending_requests/{uid}').delete() 
-            
-            is_auth, sub_status = check_subscription(uid)
-            if not is_auth:
-                await update.message.reply_text("⚠️ আপনার অ্যাকাউন্টের মেয়াদ শেষ!", reply_markup=get_expired_menu(uid))
-                return
-                
-            if uid in active_tasks:
-                await update.message.reply_text("⚠️ আপনার একটি কাজ অলরেডি চলছে!")
-                return
-            task = asyncio.create_task(scraper_worker(query, uid, uname, context))
-            active_tasks[uid] = task
-        return
-
-    elif text == '/start do_payment':
-        req = db.reference(f'pending_requests/{uid}').get()
-        if req and req.get('action') == 'payment':
-            plan = req.get('plan', '')
-            price = req.get('price', '')
-            sender = req.get('sender', '')
-            trxid = req.get('trxid', '')
-            db.reference(f'pending_requests/{uid}').delete() 
-            
-            admin_msg = f"💰 **New Payment Received!**\n\n👤 **User:** {uname} (`{uid}`)\n📦 **Package:** {plan}\n💵 **Amount:** {price}\n📱 **Sender No:** `{sender}`\n🔢 **TrxID:** `{trxid}`\n\n✅ To approve, copy this command and send:\n`/approve_sub {uid} 30`"
-            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown')
-            await update.message.reply_text("✅ আপনার পেমেন্ট রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে। ভেরিফাই করে দ্রুত আপনার অ্যাকাউন্ট আপডেট করা হবে।")
-        return
-
     context.user_data.clear()
     if uid in active_tasks:
         active_tasks[uid].cancel()
@@ -434,20 +411,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⛔ আপনি অনুমোদিত নন। অ্যাডমিনের সাথে যোগাযোগ করুন।")
         elif sub_status == "expired": 
             await update.message.reply_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**\n\nনতুন করে রিনিউ করতে বা প্যাকেজ দেখতে নিচের '🌐 ওয়েব অ্যাপ' বাটনে ক্লিক করুন।", reply_markup=get_expired_menu(uid))
-        return
-
-    # Check if Super Admin, add Web App button to their panel too
-    if is_super_admin(uid):
-        user_data = get_user_data(uid)
-        lt_leads = user_data.get('lt_leads', 0) if user_data else 0
-        lt_searches = user_data.get('lt_searches', 0) if user_data else 0
-        sub_ends = user_data.get('sub_ends', '') if user_data else ''
-        role = 'admin'
-        web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'Super Admin'))}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
-        
-        btns = [[InlineKeyboardButton("🌐 অ্যাডমিন প্যানেল (Web App)", web_app=WebAppInfo(url=web_url))],[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
-        ]
-        await update.message.reply_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
         return
 
     await update.message.reply_text("🗺️ **Google Maps Scraper Dashboard**\n\nআপনার কাজ শুরু করতে নিচের বাটন ব্যবহার করুন:", reply_markup=get_main_menu(uid))
@@ -485,7 +448,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except: pass 
     
     is_auth, sub_status = check_subscription(uid)
-    if not is_auth and query.data not in ['main_menu', 'refresh_bot']:
+    if not is_auth and query.data not in['main_menu', 'refresh_bot']:
         await query.edit_message_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**", reply_markup=get_expired_menu(uid))
         return
 
@@ -494,27 +457,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             active_tasks[uid].cancel()
             del active_tasks[uid]
         context.user_data.clear()
-        
-        if is_super_admin(uid):
-            user_data = get_user_data(uid)
-            web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'Super Admin'))}&role=admin&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
-            btns = [[InlineKeyboardButton("🌐 অ্যাডমিন প্যানেল (Web App)", web_app=WebAppInfo(url=web_url))],[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
-            ]
-            await query.edit_message_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
-        else:
-            await query.edit_message_text("🔄 সবকিছু রিসেট করা হয়েছে। নতুন করে শুরু করুন:", reply_markup=get_main_menu(uid))
+        await query.edit_message_text("🔄 সবকিছু রিসেট করা হয়েছে। নতুন করে শুরু করুন:", reply_markup=get_main_menu(uid))
         return
 
     if query.data == 'main_menu':
-        if is_super_admin(uid):
-            user_data = get_user_data(uid)
-            web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'Super Admin'))}&role=admin&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
-            btns = [[InlineKeyboardButton("🌐 অ্যাডমিন প্যানেল (Web App)", web_app=WebAppInfo(url=web_url))],[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],
-                [InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
-            ]
-            await query.edit_message_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
-        else:
-            await query.edit_message_text("🗺️ **Google Maps Scraper Dashboard**", reply_markup=get_main_menu(uid))
+        await query.edit_message_text("🗺️ **Google Maps Scraper Dashboard**", reply_markup=get_main_menu(uid))
         return
 
     if query.data == 'set_target':
@@ -529,7 +476,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target = context.user_data.get('target_query')
         if not target: return
         if uid in active_tasks: return
-        task = asyncio.create_task(scraper_worker(target, uid, uname, context))
+        task = asyncio.create_task(scraper_worker(target, uid, uname, context.bot))
         active_tasks[uid] = task
         
     elif query.data == 'stop_scraping':
@@ -583,10 +530,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == 'super_admin_panel':
         if not is_super_admin(uid): return
-        user_data = get_user_data(uid)
-        web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'Super Admin'))}&role=admin&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
-        btns = [[InlineKeyboardButton("🌐 অ্যাডমিন প্যানেল (Web App)", web_app=WebAppInfo(url=web_url))],[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],
-            [InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
+        btns = [[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
         ]
         await query.edit_message_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
         
@@ -769,10 +713,82 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("🚀 স্ক্র্যাপিং শুরু করুন", callback_data='start_scraping')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]]
         await update.message.reply_text(f"✅ **টার্গেট:** `{context.user_data['target_query']}`\nএখন শুরু করতে পারেন।", reply_markup=InlineKeyboardMarkup(keyboard))
 
+# =========================================================
+# 🌟 AIOHTTP SERVER ROUTES (To host HTML and Custom APIs)
+# =========================================================
+
+async def serve_index(request):
+    """Serve the index.html from templates folder"""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(base_dir, 'templates', 'index.html')
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return web.Response(text=content, content_type='text/html')
+    except Exception as e:
+        logger.error(f"HTML load error: {e}")
+        return web.Response(text=f"<h1>Error loading HTML</h1><p>Please make sure you have the file exactly at: <b>templates/index.html</b></p>", status=404, content_type='text/html')
+
+async def api_scrape(request):
+    """Handle Scraping trigger from Web App without Telegram Deep Links"""
+    try:
+        data = await request.json()
+        uid = str(data.get('uid'))
+        uname = data.get('uname', 'User')
+        query = data.get('query')
+        
+        bot = request.app['bot_instance']
+        
+        is_auth, sub_status = check_subscription(uid)
+        if not is_auth:
+            return web.json_response({"status": "error", "message": "Subscription expired!"})
+            
+        if uid in active_tasks:
+            await bot.send_message(chat_id=uid, text="⚠️ আপনার একটি কাজ অলরেডি চলছে!")
+            return web.json_response({"status": "error", "message": "Task running"})
+            
+        task = asyncio.create_task(scraper_worker(query, uid, uname, bot))
+        active_tasks[uid] = task
+        
+        return web.json_response({"status": "success", "message": "Scraping started"})
+    except Exception as e:
+        logger.error(f"API Scrape Error: {e}")
+        return web.json_response({"status": "error"})
+
+async def api_payment(request):
+    """Handle Payment Submission from Web App"""
+    try:
+        data = await request.json()
+        uid = str(data.get('uid'))
+        uname = data.get('uname', 'User')
+        plan = data.get('plan', '')
+        price = data.get('price', '')
+        sender = data.get('sender', '')
+        trxid = data.get('trxid', '')
+        
+        bot = request.app['bot_instance']
+        
+        admin_msg = (
+            f"💰 **New Payment Received!**\n\n"
+            f"👤 **User:** {uname} (`{uid}`)\n"
+            f"📦 **Package:** {plan}\n"
+            f"💵 **Amount:** {price}\n"
+            f"📱 **Sender:** `{sender}`\n"
+            f"🔢 **TrxID:** `{trxid}`\n\n"
+            f"✅ To approve, send this command:\n`/approve_sub {uid} 30`"
+        )
+        
+        await bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown')
+        await bot.send_message(chat_id=uid, text="✅ আপনার পেমেন্ট রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে। ভেরিফাই করে দ্রুত আপনার অ্যাকাউন্ট আপডেট করা হবে।")
+        
+        return web.json_response({"status": "success"})
+    except Exception as e:
+        logger.error(f"API Payment Error: {e}")
+        return web.json_response({"status": "error"})
+
 async def main_async():
     app = Application.builder().token(TOKEN).build()
     
-    # 🌟 CRITICAL: Fetch Bot Username right after build
     global BOT_USERNAME
     try:
         await app.initialize()
@@ -782,44 +798,41 @@ async def main_async():
     except Exception as e:
         logger.error(f"Error fetching bot info: {e}")
 
-    app.job_queue.run_once(keep_alive_task, 5)
+    asyncio.create_task(keep_alive_task(None))
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("approve_sub", approve_sub_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
     
     if RENDER_URL:
+        # Set Telegram Webhook
         webhook_path = f"/{TOKEN[-10:]}"
         await app.bot.set_webhook(url=f"{RENDER_URL}{webhook_path}")
         
-        async def telegram_webhook(request):
-            try:
-                data = await request.json()
-                await app.update_queue.put(Update.de_json(data=data, bot=app.bot))
-            except Exception as e:
-                logger.error(f"Webhook Error: {e}")
-            return web.Response()
-
-        async def serve_index(request):
-            try:
-                with open('index.html', 'r', encoding='utf-8') as f:
-                    content = f.read()
-                return web.Response(text=content, content_type='text/html')
-            except Exception:
-                return web.Response(text="<h1>HTML File Not Found!</h1>", status=404, content_type='text/html')
-                
+        # --- Create Custom AIOHTTP Web Server ---
         web_app = web.Application()
+        web_app['bot_instance'] = app.bot # Store bot to access in API
+        
+        # Define Routes
+        async def telegram_webhook(request):
+            data = await request.json()
+            await app.update_queue.put(Update.de_json(data=data, bot=app.bot))
+            return web.Response()
+            
         web_app.router.add_post(webhook_path, telegram_webhook)
-        web_app.router.add_get("/", serve_index)
+        web_app.router.add_get("/", serve_index) # The HTML File
+        web_app.router.add_post("/api/scrape", api_scrape) # Safe API endpoint
+        web_app.router.add_post("/api/payment", api_payment) # Safe API endpoint
         
         runner = web.AppRunner(web_app)
         await runner.setup()
         site = web.TCPSite(runner, "0.0.0.0", PORT)
         await site.start()
         
-        logger.info(f"🤖 Web App & Bot running natively on {RENDER_URL}")
+        logger.info(f"🌐 Server hosting HTML from templates/index.html on port {PORT}")
         
-        # We start the application without initialize() since we already did it
+        # Start application polling
         await app.start()
         await asyncio.Event().wait()
     else:
