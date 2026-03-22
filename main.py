@@ -22,8 +22,9 @@ import firebase_admin
 from firebase_admin import credentials, db
 from playwright.async_api import async_playwright
 import aiohttp
+from aiohttp import web # 🌟 NEW: Web server for HTML hosting
 
-# --- Load Environment Variables ---
+# --- Load Env ---
 load_dotenv()
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,8 +39,8 @@ FB_URL = os.environ.get('FIREBASE_DATABASE_URL')
 RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
 PORT = int(os.environ.get('PORT', '8080'))
 
-# Web App URL (GitHub Pages / Render)
-WEB_APP_URL = os.environ.get('WEB_APP_URL', 'https://your-username.github.io/skyzone-app/index.html')
+# 🌟 NEW: Web App URL is now exactly your Render URL
+WEB_APP_URL = RENDER_URL if RENDER_URL else "http://localhost:8080"
 
 # --- Global State ---
 active_tasks = {} 
@@ -152,7 +153,7 @@ async def extract_email(url):
                 if response.status == 200:
                     html = await response.text()
                     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', html)
-                    valid_emails = [e for e in emails if not any(x in e.lower() for x in['.png', '.jpg', 'sentry', 'example'])]
+                    valid_emails =[e for e in emails if not any(x in e.lower() for x in['.png', '.jpg', 'sentry', 'example'])]
                     return valid_emails[0] if valid_emails else "N/A"
     except: pass
     return "N/A"
@@ -348,7 +349,8 @@ def get_main_menu(uid):
     team_added = user_data.get('team_added', 0) if user_data else 0
     role = 'admin' if is_super_admin(uid) else 'user'
     
-    web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
+    # 🌟 NEW: Format URL directly pointing to Render Root (/)
+    web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}"
     
     keyboard = [[InlineKeyboardButton("🌐 প্রোফাইল ও ড্যাশবোর্ড (Web App)", web_app=WebAppInfo(url=web_url))]]
     
@@ -375,7 +377,7 @@ def get_main_menu(uid):
 
 def get_expired_menu(uid):
     user_data = get_user_data(uid)
-    web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&ends=expired&role=user&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
+    web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&ends=expired&role=user&bot={BOT_USERNAME}"
     return InlineKeyboardMarkup([[InlineKeyboardButton("🌐 ওয়েব অ্যাপ (প্যাকেজ ও পেমেন্ট)", web_app=WebAppInfo(url=web_url))]])
 
 async def show_toggle_menu(message_obj, uid):
@@ -396,7 +398,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uname = update.effective_user.first_name
     text = update.message.text.strip()
     
-    # 🌟 CRASH-PROOF DEEP LINK CATCHER (From Web App via Firebase)
+    # 🌟 CRASH-PROOF DEEP LINK CATCHER (From Web App)
     if text == '/start do_scrape':
         req = db.reference(f'pending_requests/{uid}').get()
         if req and req.get('action') == 'scrape':
@@ -477,7 +479,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except: pass 
     
     is_auth, sub_status = check_subscription(uid)
-    if not is_auth and query.data not in ['main_menu', 'refresh_bot']:
+    if not is_auth and query.data not in['main_menu', 'refresh_bot']:
         await query.edit_message_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**", reply_markup=get_expired_menu(uid))
         return
 
@@ -742,17 +744,59 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("🚀 স্ক্র্যাপিং শুরু করুন", callback_data='start_scraping')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]]
         await update.message.reply_text(f"✅ **টার্গেট:** `{context.user_data['target_query']}`\nএখন শুরু করতে পারেন।", reply_markup=InlineKeyboardMarkup(keyboard))
 
-def main():
+# 🌟 NEW: Aiohttp Web Server to host the HTML page directly from Python
+async def main_async():
     app = Application.builder().token(TOKEN).build()
     app.post_init = post_init
     app.job_queue.run_once(keep_alive_task, 5)
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("approve_sub", approve_sub_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
-    logger.info("🤖 SaaS Maps Bot is running...")
-    if RENDER_URL: app.run_webhook(listen="0.0.0.0", port=PORT, url_path=TOKEN[-10:], webhook_url=f"{RENDER_URL}/{TOKEN[-10:]}")
-    else: app.run_polling()
+    
+    if RENDER_URL:
+        # Set Telegram Webhook
+        webhook_path = f"/{TOKEN[-10:]}"
+        await app.bot.set_webhook(url=f"{RENDER_URL}{webhook_path}")
+        
+        # Aiohttp routes
+        async def telegram_webhook(request):
+            try:
+                data = await request.json()
+                await app.update_queue.put(Update.de_json(data=data, bot=app.bot))
+            except Exception as e:
+                logger.error(f"Webhook Error: {e}")
+            return web.Response()
+
+        async def serve_index(request):
+            try:
+                with open('index.html', 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return web.Response(text=content, content_type='text/html')
+            except Exception:
+                return web.Response(text="<h1>HTML File Not Found!</h1><p>Please make sure index.html is uploaded to Render.</p>", status=404, content_type='text/html')
+                
+        web_app = web.Application()
+        web_app.router.add_post(webhook_path, telegram_webhook)
+        web_app.router.add_get("/", serve_index)
+        
+        runner = web.AppRunner(web_app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", PORT)
+        await site.start()
+        
+        logger.info(f"🤖 Web App & Bot running natively on {RENDER_URL}")
+        
+        async with app:
+            await app.start()
+            await asyncio.Event().wait()
+    else:
+        logger.info("🤖 Bot running on polling mode...")
+        app.run_polling()
+
+def main():
+    asyncio.run(main_async())
 
 if __name__ == "__main__":
     main()
