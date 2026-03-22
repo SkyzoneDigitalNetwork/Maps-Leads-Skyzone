@@ -25,61 +25,57 @@
         .box h3 { margin: 0; font-size: 22px; color: var(--text); }
         .box span { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
         
-        /* Timer Section */
+        /* Timer CSS */
         .timer-card { background: linear-gradient(135deg, #fff0f0, #ffebee); border: 2px solid #ffcdd2; text-align: center; }
         .timer-title { font-size: 12px; font-weight: 700; color: var(--danger); text-transform: uppercase; margin-bottom: 10px; }
         .time-box { background: var(--card); border-radius: 8px; width: 60px; padding: 10px 0; display: inline-block; margin: 0 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .time-box .num { font-size: 22px; font-weight: 700; color: var(--danger); }
-        .time-box .label { font-size: 10px; color: var(--muted); font-weight: 600; display: block; text-transform: uppercase; }
+        .time-box .label { font-size: 10px; color: var(--muted); font-weight: 600; display: block; }
         
-        /* Buttons */
+        /* Button CSS */
         .btn {
             width: 100%; padding: 14px; border-radius: 12px; border: none;
             font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px;
-            transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px;
+            transition: 0.2s;
         }
         .btn:active { transform: scale(0.98); }
         .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(1, 135, 95, 0.3); }
         .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
-        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: #f39c12; color: white; }
         
-        /* Packages */
+        /* Packages CSS */
         .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; cursor: pointer; transition: 0.3s; }
         .pkg-card:active { transform: scale(0.98); }
-        .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; background: #fdfdfd; }
+        .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; }
         .pkg-price { font-size: 20px; font-weight: 700; color: var(--primary); margin: 5px 0; }
         
-        /* Forms & Chips */
+        /* Form & Chips CSS */
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
-        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; outline: none; font-size: 14px;}
-        .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; outline: none; }
+        .form-group input:focus { border-color: var(--primary); }
 
-        /* Payment Method Chips */
         .chip-container { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
         .chip {
             flex: 1; padding: 10px; text-align: center; border-radius: 8px; border: 2px solid #e8eaed;
             font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; background: #f8f9fa; color: var(--muted);
         }
         .chip.active { border-color: var(--primary); background: #e6f4ea; color: var(--primary); }
-
-        /* Admin UI */
+        
         .admin-header { background: #202124; color: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
 
-        /* Hidden Sections */
-        #scrape-form, #packages-section, #payment-form, #admin-section { display: none; }
+        /* Hiding specific sections initially */
+        #scrape-form, #packages-section, #payment-form, #admin-section, #user-section, #admin-edit-pkg { display: none; }
     </style>
 </head>
 <body>
 
-    <!-- Auto Language Indicator -->
     <div style="text-align: right; margin-bottom: 10px;">
         <span id="lang-indicator" style="font-size: 12px; font-weight: bold; color: var(--muted);">🌐 Auto Lang</span>
     </div>
 
-    <!-- ================= USER DASHBOARD ================= -->
+    <!-- ================= 1. USER DASHBOARD SECTION ================= -->
     <div id="user-section">
-        <!-- Profile Info -->
         <div class="card profile-card">
             <h2 id="u-greeting">Hello, User</h2>
             <p id="u-id-text" style="margin: 0; font-size: 12px; color: var(--muted);">ID: 00000000</p>
@@ -94,7 +90,6 @@
             </div>
         </div>
 
-        <!-- VIP Timer -->
         <div class="card timer-card" id="timer-container">
             <div class="timer-title" id="t-time-left">Subscription Time Left</div>
             <div id="countdown">
@@ -105,78 +100,70 @@
             <div id="expired-msg" style="display:none; font-size: 18px; font-weight: bold; color: var(--danger);"></div>
         </div>
 
-        <!-- Main Action Buttons -->
         <div id="main-buttons">
             <button class="btn btn-primary" onclick="showScrapeForm()" id="btn-scrape">🚀 Start Scraping</button>
             <button class="btn btn-outline" onclick="showPackages()" id="btn-sub">💎 Subscription & Packages</button>
         </div>
 
-        <!-- Scraping Form -->
+        <!-- ================= SCRAPING FORM WITH 20 CATEGORIES ================= -->
         <div class="card" id="scrape-form">
             <h3 style="margin-top:0; color: var(--primary);" id="t-scrape-title">New Search</h3>
             <div class="form-group">
-                <label id="t-cat">Category (মিনিমাম ২০+ আইটেম)</label>
+                <label id="t-cat">Category (ক্যাটাগরি)</label>
                 <select id="cat-select" onchange="toggleCustomCat()">
                     <option value="Restaurants">Restaurants</option>
                     <option value="IT Companies">IT Companies</option>
                     <option value="Hospitals">Hospitals</option>
                     <option value="Real Estate">Real Estate</option>
                     <option value="Plumbers">Plumbers</option>
-                    <option value="Gyms">Gyms / Fitness Centers</option>
-                    <option value="Hotels">Hotels & Resorts</option>
+                    <option value="Gyms">Gyms</option>
+                    <option value="Hotels">Hotels</option>
                     <option value="Coffee Shops">Coffee Shops</option>
-                    <option value="Car Repair">Car Repair & Auto Shops</option>
+                    <option value="Car Repair">Car Repair</option>
                     <option value="Dentists">Dentists</option>
-                    <option value="Lawyers">Lawyers & Law Firms</option>
+                    <option value="Lawyers">Lawyers</option>
                     <option value="Electricians">Electricians</option>
-                    <option value="Salons">Salons & Beauty Parlors</option>
+                    <option value="Salons">Salons</option>
                     <option value="Pharmacies">Pharmacies</option>
                     <option value="Supermarkets">Supermarkets</option>
                     <option value="Travel Agencies">Travel Agencies</option>
-                    <option value="Banks">Banks & ATMs</option>
+                    <option value="Banks">Banks</option>
                     <option value="Mechanics">Mechanics</option>
-                    <option value="Schools">Schools & Colleges</option>
+                    <option value="Schools">Schools</option>
                     <option value="Architects">Architects</option>
-                    <option value="Boutiques">Clothing Boutiques</option>
-                    <option value="Bakeries">Bakeries</option>
-                    <option value="Custom">Custom (Type your own)</option>
+                    <option value="Custom">✍️ Custom (Type below)</option>
                 </select>
             </div>
             <div class="form-group" id="custom-cat-group" style="display: none;">
                 <input type="text" id="custom-cat" placeholder="e.g. Car Wash">
             </div>
             <div class="form-group">
-                <label id="t-loc">Location (স্থানের নাম)</label>
+                <label id="t-loc">Location (জায়গার নাম)</label>
                 <input type="text" id="loc-input" placeholder="e.g. Dhaka, New York">
             </div>
             <button class="btn btn-primary" onclick="submitScrape()" id="btn-start-now">Start Now</button>
             <button class="btn btn-outline" onclick="goBack('scrape-form')" id="btn-cancel-1">Cancel</button>
         </div>
 
-        <!-- Packages Section -->
+        <!-- ================= PACKAGES SECTION ================= -->
         <div id="packages-section">
             <h3 style="text-align: center; color: var(--primary);" id="t-pkg-title">Premium Packages</h3>
-            <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Click a package to upgrade your account.</p>
+            <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Select a package to buy.</p>
             
+            <!-- Dynamic Packages (will be loaded, fallback defaults included) -->
             <div class="pkg-card" onclick="openPaymentForm('1 Month (Basic)', '500 BDT')">
                 <strong id="p1-title">🥉 1 Month (Basic Plan)</strong>
                 <div class="pkg-price">500 BDT</div>
             </div>
-            <div class="pkg-card" onclick="openPaymentForm('3 Months (Standard)', '1350 BDT')">
-                <strong id="p2-title">🥈 3 Months (Standard Plan)</strong>
-                <div class="pkg-price">1350 BDT</div>
-                <div style="font-size: 11px; color: var(--danger); font-weight: bold;">10% Discount!</div>
-            </div>
             <div class="pkg-card premium" onclick="openPaymentForm('6 Months (Premium)', '2500 BDT')">
                 <div style="position: absolute; top: 10px; right: -25px; background: var(--primary); color: white; font-size: 10px; padding: 2px 25px; transform: rotate(45deg); font-weight: bold;">Best</div>
-                <strong id="p3-title">🥇 6 Months (Premium Plan)</strong>
+                <strong id="p2-title">🥇 6 Months (Premium Plan)</strong>
                 <div class="pkg-price">2500 BDT</div>
-                <div style="font-size: 11px; color: var(--danger); font-weight: bold;">Max Discount!</div>
             </div>
             <button class="btn btn-outline" onclick="goBack('packages-section')" id="btn-cancel-2">Back</button>
         </div>
 
-        <!-- Payment Form with Selectable Chips -->
+        <!-- ================= PAYMENT FORM ================= -->
         <div class="card" id="payment-form">
             <h3 style="margin-top:0; color: var(--primary);" id="t-pay-title">Submit Payment</h3>
             <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px;">
@@ -184,17 +171,17 @@
                 <b id="t-amount">Amount:</b> <span id="selected-price" style="color: var(--danger); font-weight: bold;">...</span>
             </div>
             
-            <div style="background: #e8f0fe; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; border: 1px solid #cce0ff;">
-                <strong id="t-send-money-txt">Payment Numbers (Send Money):</strong><br>
-                ✅ Bkash: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
-                ✅ Nagad: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
-                ✅ Rocket: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
+            <!-- Payment Numbers Details -->
+            <div style="background: #e8f0fe; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; border: 1px solid #cce0ff;" id="admin-payment-info">
+                <strong>Payment Numbers (Send Money):</strong><br>
+                ✅ Bkash: <b style="cursor: pointer; color: #1a73e8;" onclick="copyNumber('01757481646')">01757481646</b><br>
+                ✅ Nagad: <b style="cursor: pointer; color: #1a73e8;" onclick="copyNumber('01757481646')">01757481646</b><br>
                 <i style="font-size: 10px; color: var(--muted);">(Tap number to copy)</i>
             </div>
 
-            <!-- Payment Method Selection Chips -->
+            <!-- Chips for Payment Method -->
             <div class="form-group">
-                <label id="t-method">Select Payment Method (পেমেন্ট মাধ্যম)</label>
+                <label id="t-method">Select Payment Method</label>
                 <div class="chip-container">
                     <div class="chip active" onclick="setMethod(this, 'Bkash')">Bkash</div>
                     <div class="chip" onclick="setMethod(this, 'Nagad')">Nagad</div>
@@ -205,7 +192,7 @@
             </div>
 
             <div class="form-group">
-                <label id="t-sender">Sender Number (যে নাম্বার থেকে টাকা পাঠিয়েছেন)</label>
+                <label id="t-sender">Sender Number</label>
                 <input type="text" id="sender-number" placeholder="e.g. 017XXXXXXXX">
             </div>
             <div class="form-group">
@@ -217,53 +204,80 @@
         </div>
     </div>
 
-    <!-- ================= ADMIN DASHBOARD ================= -->
+    <!-- ================= 2. ADMIN DASHBOARD SECTION ================= -->
     <div id="admin-section">
         <div class="admin-header">
             <h2>👑 Super Admin Panel</h2>
-            <p style="margin:0; font-size: 12px; color:#ccc;">Enterprise Control Dashboard</p>
+            <p style="margin:0; font-size: 12px; color:#ccc;">Web App Control Center</p>
         </div>
-        <div class="card">
-            <h3 style="margin-top:0; font-size:16px;">Quick Actions</h3>
-            <!-- Admin buttons directly call Python Backend without opening Telegram chat manually -->
-            <button class="btn btn-primary" onclick="sendAdminCmd('add_user')">➕ Add User (Trial)</button>
-            <button class="btn btn-primary" onclick="sendAdminCmd('add_team_leader')">👥 Add Team Leader</button>
-            <button class="btn btn-outline" onclick="sendAdminCmd('manage_users')">⚙️ Manage Users & Subscriptions</button>
-            <button class="btn btn-outline" onclick="sendAdminCmd('edit_packages')">📝 Edit Packages & Pricing Text</button>
-            <button class="btn btn-danger" onclick="sendAdminCmd('toggle_bot_buttons')">👁️ Hide/Show Telegram Buttons</button>
+
+        <div class="card" id="admin-main-menu">
+            <h3 style="margin-top:0;">Management Actions</h3>
+            <!-- These use the /api/admin fetch method -->
+            <button class="btn btn-primary" onclick="sendAdminCmd('add_user')">➕ Add User (Telegram)</button>
+            <button class="btn btn-primary" onclick="sendAdminCmd('manage_users')">👥 User Control (Telegram)</button>
+            
+            <!-- NEW: Edit packages directly in Web App -->
+            <button class="btn btn-warning" onclick="showAdminPkgEdit()">📝 Edit Packages & Numbers</button>
+            
+            <button class="btn btn-danger" onclick="sendAdminCmd('toggle_bot_buttons')">👁️ Toggle Bot Buttons</button>
+            <button class="btn btn-outline" onclick="tg.close()">Close Web App</button>
         </div>
-        <button class="btn btn-outline" onclick="tg.close()">Close Web App</button>
+
+        <!-- ================= ADMIN EDIT PACKAGES FORM ================= -->
+        <div class="card" id="admin-edit-pkg">
+            <h3 style="margin-top:0; color: var(--primary);">Edit Packages & Payments</h3>
+            <p style="font-size:12px; color:var(--muted);">এইখান থেকে এডিট করলে সব ইউজারের কাছে চেঞ্জ হয়ে যাবে।</p>
+            
+            <div class="form-group">
+                <label>Package 1 Name (e.g. 1 Month / 30 Days)</label>
+                <input type="text" id="edit-p1-name" value="1 Month (Basic)">
+            </div>
+            <div class="form-group">
+                <label>Package 1 Price (e.g. 500 BDT)</label>
+                <input type="text" id="edit-p1-price" value="500 BDT">
+            </div>
+            
+            <div class="form-group" style="border-top:1px solid #eee; padding-top:15px;">
+                <label>Payment Instructions / Numbers</label>
+                <textarea id="edit-payment-details" rows="4" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: 'Poppins';">✅ Bkash: 01757481646
+✅ Nagad: 01757481646</textarea>
+            </div>
+
+            <!-- In a full backend connection, this would save to Firebase -->
+            <button class="btn btn-primary" onclick="savePackagesToFirebase()">💾 Save Changes</button>
+            <button class="btn btn-outline" onclick="goBack('admin-edit-pkg', 'admin-main-menu')">Cancel</button>
+        </div>
     </div>
 
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // --- Translations Dictionary ---
+        // Language Dictionary
         const dict = {
             en: {
                 greeting: "Hello,", searches: "Searches", leads: "Leads", timeLeft: "Subscription Time Left",
                 days: "Days", hrs: "Hrs", mins: "Min", expired: "⚠️ ACCOUNT EXPIRED!",
                 btnScrape: "🚀 Start Scraping", btnSub: "💎 Subscription & Packages",
-                scrapeTitle: "New Search", cat: "Category (Select one)", loc: "Location (City/Country)", startNow: "Start Now", cancel: "Cancel",
+                scrapeTitle: "New Search", cat: "Category", loc: "Location", startNow: "Start Now", cancel: "Cancel",
                 pkgTitle: "Premium Packages", pkgDesc: "Select a package to upgrade your account.",
                 payTitle: "Submit Payment", selectedPkg: "Package:", amount: "Amount:",
-                method: "Select Payment Method", sender: "Sender Number", trxid: "Transaction ID (TrxID)", submitPay: "Submit to Admin",
-                sendMoneyTxt: "Payment Numbers (Send Money):"
+                method: "Select Payment Method", sender: "Sender Number", trxid: "Transaction ID (TrxID)", submitPay: "Submit Request"
             },
             bn: {
                 greeting: "স্বাগতম,", searches: "সার্চ", leads: "লিড", timeLeft: "সাবস্ক্রিপশনের মেয়াদ আছে",
                 days: "দিন", hrs: "ঘণ্টা", mins: "মিনিট", expired: "⚠️ আপনার মেয়াদ শেষ হয়ে গেছে!",
                 btnScrape: "🚀 স্ক্র্যাপিং শুরু করুন", btnSub: "💎 সাবস্ক্রিপশন ও প্যাকেজ",
-                scrapeTitle: "নতুন সার্চ", cat: "ক্যাটাগরি (সিলেক্ট করুন)", loc: "লোকেশন (জায়গার নাম)", startNow: "শুরু করুন", cancel: "বাতিল",
+                scrapeTitle: "নতুন সার্চ", cat: "ক্যাটাগরি", loc: "লোকেশন (জায়গার নাম)", startNow: "শুরু করুন", cancel: "বাতিল",
                 pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "অ্যাকাউন্ট আপডেট করতে প্যাকেজ সিলেক্ট করুন।",
                 payTitle: "পেমেন্ট সাবমিট করুন", selectedPkg: "প্যাকেজ:", amount: "পরিমাণ:",
-                method: "পেমেন্ট মেথড নির্বাচন করুন", sender: "যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "ট্রানজেকশন আইডি (TrxID)", submitPay: "অ্যাডমিনকে পাঠান",
-                sendMoneyTxt: "পেমেন্ট করার মাধ্যম (Send Money):"
+                method: "পেমেন্ট মেথড নির্বাচন করুন", sender: "যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "ট্রানজেকশন আইডি (TrxID)", submitPay: "অ্যাডমিনকে পাঠান"
             }
         };
 
-        // --- Extract URL Parameters ---
+        // Extract Params from URL
         const urlParams = new URLSearchParams(window.location.search);
         const uid = urlParams.get('uid') || '000';
         const uName = decodeURIComponent(urlParams.get('name') || 'User');
@@ -271,17 +285,23 @@
         const endsAtStr = urlParams.get('ends');
         const teamLimit = parseInt(urlParams.get('team_limit') || '0');
         const teamAdded = parseInt(urlParams.get('team_added') || '0');
+        
+        let fbUrl = urlParams.get('fb') || '';
+        fbUrl = decodeURIComponent(fbUrl).replace(/\/$/, ""); 
 
-        // --- Language Detection ---
+        // Set Auto Language
         let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
         document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
         applyLanguage(userLang);
 
-        // --- Render UI Based on Role ---
+        // Routing UI
         if (role === 'admin') {
             document.getElementById('user-section').style.display = 'none';
             document.getElementById('admin-section').style.display = 'block';
+            document.getElementById('admin-main-menu').style.display = 'block';
         } else {
+            document.getElementById('user-section').style.display = 'block';
+            document.getElementById('main-buttons').style.display = 'block';
             document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
             document.getElementById('u-id-text').innerText = "UID: " + uid;
             document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
@@ -295,7 +315,6 @@
             startTimer(endsAtStr);
         }
 
-        // --- Core Functions ---
         function applyLanguage(l) {
             document.getElementById('t-searches').innerText = dict[l].searches;
             document.getElementById('t-leads').innerText = dict[l].leads;
@@ -322,7 +341,6 @@
             document.getElementById('t-sender').innerText = dict[l].sender;
             document.getElementById('t-trxid').innerText = dict[l].trxid;
             document.getElementById('btn-submit-pay').innerText = dict[l].submitPay;
-            document.getElementById('t-send-money-txt').innerText = dict[l].sendMoneyTxt;
         }
 
         function startTimer(ends) {
@@ -351,8 +369,11 @@
             }
         }
 
+        // Navigation
         function showScrapeForm() { goBack('main-buttons', 'scrape-form'); }
         function showPackages() { goBack('main-buttons', 'packages-section'); }
+        function showAdminPkgEdit() { goBack('admin-main-menu', 'admin-edit-pkg'); }
+        
         function openPaymentForm(plan, price) {
             goBack('packages-section', 'payment-form');
             document.getElementById('selected-plan').innerText = plan;
@@ -362,23 +383,23 @@
             document.getElementById(currentId).style.display = 'none';
             document.getElementById(targetId).style.display = 'block';
         }
+        
         function toggleCustomCat() {
             document.getElementById('custom-cat-group').style.display = document.getElementById('cat-select').value === 'Custom' ? 'block' : 'none';
         }
+        
         function copyNumber(num) {
             navigator.clipboard.writeText(num);
             tg.showAlert(userLang === 'bn' ? `নাম্বার কপি করা হয়েছে: ${num}` : `Number Copied: ${num}`);
         }
+
         function setMethod(element, method) {
             document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
             document.getElementById('selected-method').value = method;
         }
 
-        // ================= DIRECT API COMMUNICATION (NO TELEGRAM DEEP LINKS) =================
-        // Since python runs on Render, we use relative paths (/api/...) 
-        // to securely send data without causing Telegram app crashes.
-
+        // ================= FAST & SECURE DIRECT FETCH APIS =================
         async function submitScrape() {
             let cat = document.getElementById('cat-select').value;
             if (cat === 'Custom') cat = document.getElementById('custom-cat').value;
@@ -396,15 +417,18 @@
             let query = `${cat} in ${loc}`;
             
             try {
-                // Sent to Python Backend
+                // Send directly to the Python backend API running on Render
                 await fetch('/api/scrape', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ uid: uid, uname: uName, query: query })
                 });
-                tg.close(); // Close app immediately, bot handles the rest
+                
+                // Alert and Close - 100% Crash Proof!
+                tg.showAlert("Search sent! Check Telegram.");
+                tg.close();
             } catch (error) {
-                tg.showAlert("Network Error! Ensure you are using the correct Render Web App URL.");
+                tg.showAlert("Error connecting to server. Is it online?");
                 btn.innerText = dict[userLang].startNow;
                 btn.disabled = false;
             }
@@ -432,16 +456,23 @@
                 await fetch('/api/payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: uid, uname: uName, plan: plan, price: price, sender: fullSender, trxid: trxid })
+                    body: JSON.stringify({ 
+                        uid: uid, uname: uName, 
+                        plan: plan, price: price, 
+                        sender: fullSender, trxid: trxid 
+                    })
                 });
+
+                tg.showAlert("Payment requested successfully!");
                 tg.close();
             } catch (error) {
-                tg.showAlert("Network Error! Ensure you are using the correct Render Web App URL.");
+                tg.showAlert("Error sending payment. Please try again.");
                 btn.innerText = dict[userLang].submitPay;
                 btn.disabled = false;
             }
         }
 
+        // Admin Commands
         async function sendAdminCmd(cmd) {
             try {
                 await fetch('/api/admin', {
@@ -450,8 +481,29 @@
                     body: JSON.stringify({ uid: uid, cmd: cmd })
                 });
                 tg.close();
-            } catch (error) {
-                tg.showAlert("Admin Command Error! Ensure Web App URL is correct.");
+            } catch(e) {
+                tg.showAlert("Error sending command.");
+            }
+        }
+
+        // Save Admin Edits (Optional extra logic for future use)
+        async function savePackagesToFirebase() {
+            if(!fbUrl) { tg.showAlert("Firebase URL missing."); return; }
+            let p1Name = document.getElementById('edit-p1-name').value;
+            let p1Price = document.getElementById('edit-p1-price').value;
+            let payDetails = document.getElementById('edit-payment-details').value;
+            
+            try {
+                // Example of directly saving UI config to Firebase DB
+                await fetch(`${fbUrl}/web_settings/packages.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ p1Name: p1Name, p1Price: p1Price, details: payDetails })
+                });
+                tg.showAlert("Settings Saved Successfully!");
+                goBack('admin-edit-pkg', 'admin-main-menu');
+            } catch(e) {
+                tg.showAlert("Failed to save.");
             }
         }
     </script>
