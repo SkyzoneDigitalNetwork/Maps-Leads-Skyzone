@@ -48,11 +48,20 @@
         .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; }
         .pkg-price { font-size: 20px; font-weight: 700; color: var(--primary); margin: 5px 0; }
         
-        /* Forms */
+        /* Forms & Chips */
         .form-group { margin-bottom: 15px; text-align: left; }
         .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
-        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; outline: none; }
+        .form-group input:focus { border-color: var(--primary); }
+
+        /* Payment Method Chips */
+        .chip-container { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .chip {
+            flex: 1; padding: 10px; text-align: center; border-radius: 8px; border: 2px solid #e8eaed;
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; background: #f8f9fa; color: var(--muted);
+        }
+        .chip.active { border-color: var(--primary); background: #e6f4ea; color: var(--primary); }
+
         #scrape-form, #packages-section, #payment-form, #admin-section { display: none; }
     </style>
 </head>
@@ -73,13 +82,11 @@
                 <div class="box"><h3 id="u-leads">0</h3><span id="t-leads">Leads</span></div>
             </div>
             
-            <!-- Team Info -->
             <div id="team-info" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
                 <span style="font-size: 12px; font-weight: 600; color: var(--primary);" id="t-team-limit">Team Members: 0 / 0</span>
             </div>
         </div>
 
-        <!-- VIP Timer -->
         <div class="card timer-card" id="timer-container">
             <div class="timer-title" id="t-time-left">Subscription Time Left</div>
             <div id="countdown">
@@ -90,7 +97,6 @@
             <div id="expired-msg" style="display:none; font-size: 18px; font-weight: bold; color: var(--danger);"></div>
         </div>
 
-        <!-- Main Action Buttons -->
         <div id="main-buttons">
             <button class="btn btn-primary" onclick="showScrapeForm()" id="btn-scrape">🚀 Start Scraping</button>
             <button class="btn btn-outline" onclick="showPackages()" id="btn-sub">💎 Subscription & Packages</button>
@@ -157,11 +163,24 @@
                 <strong>Payment Numbers (Send Money):</strong><br>
                 ✅ Bkash: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
                 ✅ Nagad: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
+                ✅ Rocket: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
                 <i style="font-size: 10px; color: var(--muted);">(Tap number to copy)</i>
             </div>
 
+            <!-- 🌟 NEW: Payment Method Selection -->
             <div class="form-group">
-                <label id="t-sender">Sender Number</label>
+                <label id="t-method">Select Payment Method (পেমেন্ট মেথড)</label>
+                <div class="chip-container">
+                    <div class="chip active" onclick="setMethod(this, 'Bkash')">Bkash</div>
+                    <div class="chip" onclick="setMethod(this, 'Nagad')">Nagad</div>
+                    <div class="chip" onclick="setMethod(this, 'Rocket')">Rocket</div>
+                    <div class="chip" onclick="setMethod(this, 'Binance')">Binance</div>
+                </div>
+                <input type="hidden" id="selected-method" value="Bkash">
+            </div>
+
+            <div class="form-group">
+                <label id="t-sender">Sender Number (যে নাম্বার থেকে টাকা পাঠিয়েছেন)</label>
                 <input type="text" id="sender-number" placeholder="e.g. 017XXXXXXXX">
             </div>
             <div class="form-group">
@@ -196,7 +215,7 @@
                 scrapeTitle: "New Search", cat: "Category", loc: "Location", startNow: "Start Now", cancel: "Cancel",
                 pkgTitle: "Premium Packages", pkgDesc: "Select a package to upgrade your account.",
                 payTitle: "Submit Payment", selectedPkg: "Package:", amount: "Amount:",
-                sender: "Sender Number", trxid: "Transaction ID (TrxID)", submitPay: "Submit Request"
+                method: "Select Payment Method", sender: "Sender Number", trxid: "Transaction ID (TrxID)", submitPay: "Submit Request"
             },
             bn: {
                 greeting: "স্বাগতম,", searches: "সার্চ", leads: "লিড", timeLeft: "সাবস্ক্রিপশনের মেয়াদ আছে",
@@ -205,7 +224,7 @@
                 scrapeTitle: "নতুন সার্চ", cat: "ক্যাটাগরি", loc: "লোকেশন (জায়গার নাম)", startNow: "শুরু করুন", cancel: "বাতিল",
                 pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "অ্যাকাউন্ট আপডেট করতে প্যাকেজ সিলেক্ট করুন।",
                 payTitle: "পেমেন্ট সাবমিট করুন", selectedPkg: "প্যাকেজ:", amount: "পরিমাণ:",
-                sender: "যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "ট্রানজেকশন আইডি (TrxID)", submitPay: "অ্যাডমিনকে পাঠান"
+                method: "পেমেন্ট মেথড নির্বাচন করুন", sender: "যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "ট্রানজেকশন আইডি (TrxID)", submitPay: "অ্যাডমিনকে পাঠান"
             }
         };
 
@@ -219,9 +238,8 @@
         const teamAdded = parseInt(urlParams.get('team_added') || '0');
         const botUsername = urlParams.get('bot') || '';
         
-        // Critical: Firebase URL for direct REST API calls
         let fbUrl = urlParams.get('fb') || '';
-        fbUrl = decodeURIComponent(fbUrl).replace(/\/$/, ""); // Remove trailing slash if any
+        fbUrl = decodeURIComponent(fbUrl).replace(/\/$/, ""); 
 
         // Set Language
         let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
@@ -246,7 +264,6 @@
             startTimer(endsAtStr);
         }
 
-        // Apply Texts
         function applyLanguage(l) {
             document.getElementById('t-searches').innerText = dict[l].searches;
             document.getElementById('t-leads').innerText = dict[l].leads;
@@ -269,6 +286,7 @@
             document.getElementById('t-pay-title').innerText = dict[l].payTitle;
             document.getElementById('t-selected-pkg').innerText = dict[l].selectedPkg;
             document.getElementById('t-amount').innerText = dict[l].amount;
+            document.getElementById('t-method').innerText = dict[l].method;
             document.getElementById('t-sender').innerText = dict[l].sender;
             document.getElementById('t-trxid').innerText = dict[l].trxid;
             document.getElementById('btn-submit-pay').innerText = dict[l].submitPay;
@@ -314,9 +332,18 @@
         function toggleCustomCat() {
             document.getElementById('custom-cat-group').style.display = document.getElementById('cat-select').value === 'Custom' ? 'block' : 'none';
         }
+        
+        // --- NEW: Copy Number ---
         function copyNumber(num) {
             navigator.clipboard.writeText(num);
             tg.showAlert(userLang === 'bn' ? `নাম্বার কপি করা হয়েছে: ${num}` : `Number Copied: ${num}`);
+        }
+
+        // --- NEW: Select Payment Method Chip ---
+        function setMethod(element, method) {
+            document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            document.getElementById('selected-method').value = method;
         }
 
         // ================= 100% CRASH-PROOF DATA SENDING =================
@@ -330,50 +357,57 @@
                 return; 
             }
             
-            document.getElementById('btn-start-now').innerText = "Processing...";
+            let btn = document.getElementById('btn-start-now');
+            btn.innerText = "Processing..."; btn.disabled = true;
+
             let query = `${cat} in ${loc}`;
             
-            // Step 1: Save data to Firebase REST API
+            // Save request to Firebase directly
             if(fbUrl) {
                 await fetch(`${fbUrl}/pending_requests/${uid}.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'scrape', query: query, time: Date.now() })
+                    body: JSON.stringify({ action: 'scrape', query: query, timestamp: Date.now() })
                 });
             }
             
-            // Step 2: Signal Bot to Read Data via Deep Link
-            tg.openTelegramLink(`https://t.me/${botUsername}?start=do_scrape`);
+            // Tell Bot to check Firebase (Using Direct Message to chat - 100% Crash proof)
+            tg.openTelegramLink(`https://t.me/${botUsername}?text=/start%20do_scrape`);
             tg.close();
         }
 
         async function submitPayment() {
             let plan = document.getElementById('selected-plan').innerText;
             let price = document.getElementById('selected-price').innerText;
-            let sender = document.getElementById('sender-number').value;
+            let method = document.getElementById('selected-method').value;
+            let senderNum = document.getElementById('sender-number').value;
             let trxid = document.getElementById('trx-id').value;
 
-            if (!sender || !trxid) { 
+            if (!senderNum || !trxid) { 
                 tg.showAlert(userLang === 'bn' ? "নাম্বার এবং TrxID দিন!" : "Provide Number and TrxID!"); 
                 return; 
             }
 
-            document.getElementById('btn-submit-pay').innerText = "Sending to Admin...";
-            
-            // Step 1: Save data to Firebase
+            let btn = document.getElementById('btn-submit-pay');
+            btn.innerText = "Processing..."; btn.disabled = true;
+
+            // Combine Method and Number for Python Bot (e.g. "Bkash - 017...")
+            let fullSender = `${method} - ${senderNum}`;
+
+            // Save request to Firebase directly
             if(fbUrl) {
                 await fetch(`${fbUrl}/pending_requests/${uid}.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         action: 'payment', plan: plan, price: price, 
-                        sender: sender, trxid: trxid, time: Date.now() 
+                        sender: fullSender, trxid: trxid, timestamp: Date.now() 
                     })
                 });
             }
 
-            // Step 2: Signal Bot
-            tg.openTelegramLink(`https://t.me/${botUsername}?start=do_payment`);
+            // Tell Bot to check Firebase
+            tg.openTelegramLink(`https://t.me/${botUsername}?text=/start%20do_payment`);
             tg.close();
         }
     </script>
