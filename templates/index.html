@@ -151,14 +151,23 @@
             <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Select a package to buy.</p>
             
             <!-- Dynamic Packages (will be loaded, fallback defaults included) -->
-            <div class="pkg-card" onclick="openPaymentForm('1 Month (Basic)', '500 BDT')">
-                <strong id="p1-title">🥉 1 Month (Basic Plan)</strong>
-                <div class="pkg-price">500 BDT</div>
+            <div class="pkg-card" onclick="openPaymentForm('24 Hours (Hours)', '200 BDT')">
+                <strong id="p1-title">⏳ 24 Hours (Hours)⏰</strong>
+                <div class="pkg-price">200 BDT</div>
             </div>
-            <div class="pkg-card premium" onclick="openPaymentForm('6 Months (Premium)', '2500 BDT')">
+            <div class="pkg-card" onclick="openPaymentForm('7 Day (Day)', '1200 BDT')">
+                <strong id="p2-title">🥉 7 Day (Day)</strong>
+                <div class="pkg-price">1200 BDT</div>
+            </div>
+            <div class="pkg-card premium" onclick="openPaymentForm('3 Months (Premium)', '3000 BDT')">
                 <div style="position: absolute; top: 10px; right: -25px; background: var(--primary); color: white; font-size: 10px; padding: 2px 25px; transform: rotate(45deg); font-weight: bold;">Best</div>
-                <strong id="p2-title">🥇 6 Months (Premium Plan)</strong>
-                <div class="pkg-price">2500 BDT</div>
+                <strong id="p3-title">🥈 3 Months (Premium Plan)</strong>
+                <div class="pkg-price">3000 BDT</div>
+            </div>
+            <div class="pkg-card premium" onclick="openPaymentForm('6 Months (Premium)', '5000 BDT')">
+                <div style="position: absolute; top: 10px; right: -25px; background: var(--primary); color: white; font-size: 10px; padding: 2px 25px; transform: rotate(45deg); font-weight: bold;">Best</div>
+                <strong id="p4-title">🥇 6 Months (🛡️🔝🚀🔴)</strong>
+                <div class="pkg-price">5000 BDT</div>
             </div>
             <button class="btn btn-outline" onclick="goBack('packages-section')" id="btn-cancel-2">Back</button>
         </div>
@@ -185,8 +194,6 @@
                 <div class="chip-container">
                     <div class="chip active" onclick="setMethod(this, 'Bkash')">Bkash</div>
                     <div class="chip" onclick="setMethod(this, 'Nagad')">Nagad</div>
-                    <div class="chip" onclick="setMethod(this, 'Rocket')">Rocket</div>
-                    <div class="chip" onclick="setMethod(this, 'Binance')">Binance</div>
                 </div>
                 <input type="hidden" id="selected-method" value="Bkash">
             </div>
