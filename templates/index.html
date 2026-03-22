@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Skyzone Dashboard</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #01875f; --danger: #d32f2f; --bg: #f4f7f6;
+            --card: #ffffff; --text: #202124; --muted: #5f6368;
+        }
+        body {
+            font-family: 'Poppins', sans-serif; background: var(--bg);
+            color: var(--text); margin: 0; padding: 15px; padding-bottom: 40px;
+        }
+        .card {
+            background: var(--card); border-radius: 16px; padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 20px;
+        }
+        h2 { margin: 0 0 5px 0; color: var(--primary); font-size: 22px; }
+        .grid-2 { display: flex; gap: 10px; margin-top: 15px; }
+        .box { background: #f8f9fa; flex: 1; padding: 15px 10px; border-radius: 12px; border: 1px solid #e8eaed; text-align: center; }
+        .box h3 { margin: 0; font-size: 22px; color: var(--text); }
+        .box span { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+        
+        /* Timer */
+        .timer-card { background: linear-gradient(135deg, #fff0f0, #ffebee); border: 2px solid #ffcdd2; text-align: center; }
+        .timer-title { font-size: 12px; font-weight: 700; color: var(--danger); text-transform: uppercase; margin-bottom: 10px; }
+        .time-box { background: var(--card); border-radius: 8px; width: 60px; padding: 10px 0; display: inline-block; margin: 0 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .time-box .num { font-size: 22px; font-weight: 700; color: var(--danger); }
+        .time-box .label { font-size: 10px; color: var(--muted); font-weight: 600; display: block; }
+        
+        /* Buttons */
+        .btn {
+            width: 100%; padding: 14px; border-radius: 12px; border: none;
+            font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px;
+            transition: 0.2s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(1, 135, 95, 0.3); }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        
+        /* Packages */
+        .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; cursor: pointer; transition: 0.3s; }
+        .pkg-card:active { transform: scale(0.98); }
+        .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; }
+        .pkg-price { font-size: 20px; font-weight: 700; color: var(--primary); margin: 5px 0; }
+        
+        /* Forms & Chips */
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; outline: none; }
+        .form-group input:focus { border-color: var(--primary); }
+
+        /* Payment Method Chips */
+        .chip-container { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .chip {
+            flex: 1; padding: 10px; text-align: center; border-radius: 8px; border: 2px solid #e8eaed;
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; background: #f8f9fa; color: var(--muted);
+        }
+        .chip.active { border-color: var(--primary); background: #e6f4ea; color: var(--primary); }
+
+        #scrape-form, #packages-section, #payment-form, #admin-section { display: none; }
+    </style>
+</head>
+<body>
+
+    <div style="text-align: right; margin-bottom: 10px;">
+        <span id="lang-indicator" style="font-size: 12px; font-weight: bold; color: var(--muted);">🌐 Auto Lang</span>
+    </div>
+
+    <!-- ================= USER DASHBOARD ================= -->
+    <div id="user-section">
+        <div class="card profile-card">
+            <h2 id="u-greeting">Hello, User</h2>
+            <p id="u-id-text" style="margin: 0; font-size: 12px; color: var(--muted);">ID: 00000000</p>
+            
+            <div class="grid-2">
+                <div class="box"><h3 id="u-searches">0</h3><span id="t-searches">Searches</span></div>
+                <div class="box"><h3 id="u-leads">0</h3><span id="t-leads">Leads</span></div>
+            </div>
+            
+            <div id="team-info" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--primary);" id="t-team-limit">Team Members: 0 / 0</span>
+            </div>
+        </div>
+
+        <div class="card timer-card" id="timer-container">
+            <div class="timer-title" id="t-time-left">Subscription Time Left</div>
+            <div id="countdown">
+                <div class="time-box"><span class="num" id="t-days">00</span><span class="label" id="l-days">Days</span></div>
+                <div class="time-box"><span class="num" id="t-hours">00</span><span class="label" id="l-hours">Hrs</span></div>
+                <div class="time-box"><span class="num" id="t-mins">00</span><span class="label" id="l-mins">Min</span></div>
+            </div>
+            <div id="expired-msg" style="display:none; font-size: 18px; font-weight: bold; color: var(--danger);"></div>
+        </div>
+
+        <div id="main-buttons">
+            <button class="btn btn-primary" onclick="showScrapeForm()" id="btn-scrape">🚀 Start Scraping</button>
+            <button class="btn btn-outline" onclick="showPackages()" id="btn-sub">💎 Subscription & Packages</button>
+        </div>
+
+        <!-- Scraping Form -->
+        <div class="card" id="scrape-form">
+            <h3 style="margin-top:0; color: var(--primary);" id="t-scrape-title">New Search</h3>
+            <div class="form-group">
+                <label id="t-cat">Category</label>
+                <select id="cat-select" onchange="toggleCustomCat()">
+                    <option value="Restaurants">Restaurants</option>
+                    <option value="IT Companies">IT Companies</option>
+                    <option value="Hospitals">Hospitals</option>
+                    <option value="Real Estate">Real Estate</option>
+                    <option value="Plumbers">Plumbers</option>
+                    <option value="Hotels">Hotels</option>
+                    <option value="Custom">Custom (Type below)</option>
+                </select>
+            </div>
+            <div class="form-group" id="custom-cat-group" style="display: none;">
+                <input type="text" id="custom-cat" placeholder="e.g. Car Wash">
+            </div>
+            <div class="form-group">
+                <label id="t-loc">Location</label>
+                <input type="text" id="loc-input" placeholder="e.g. Dhaka, New York">
+            </div>
+            <button class="btn btn-primary" onclick="submitScrape()" id="btn-start-now">Start Now</button>
+            <button class="btn btn-outline" onclick="goBack('scrape-form')" id="btn-cancel-1">Cancel</button>
+        </div>
+
+        <!-- Packages Section -->
+        <div id="packages-section">
+            <h3 style="text-align: center; color: var(--primary);" id="t-pkg-title">Premium Packages</h3>
+            <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Click a package to buy.</p>
+            
+            <div class="pkg-card" onclick="openPaymentForm('1 Month (Basic)', '500 BDT')">
+                <strong id="p1-title">🥉 1 Month (Basic Plan)</strong>
+                <div class="pkg-price">500 BDT</div>
+            </div>
+            <div class="pkg-card" onclick="openPaymentForm('3 Months (Standard)', '1350 BDT')">
+                <strong id="p2-title">🥈 3 Months (Standard Plan)</strong>
+                <div class="pkg-price">1350 BDT</div>
+                <div style="font-size: 11px; color: var(--danger);">10% Discount!</div>
+            </div>
+            <div class="pkg-card premium" onclick="openPaymentForm('6 Months (Premium)', '2500 BDT')">
+                <div style="position: absolute; top: 10px; right: -25px; background: var(--primary); color: white; font-size: 10px; padding: 2px 25px; transform: rotate(45deg); font-weight: bold;">Best</div>
+                <strong id="p3-title">🥇 6 Months (Premium Plan)</strong>
+                <div class="pkg-price">2500 BDT</div>
+                <div style="font-size: 11px; color: var(--danger);">Max Discount!</div>
+            </div>
+            <button class="btn btn-outline" onclick="goBack('packages-section')" id="btn-cancel-2">Back</button>
+        </div>
+
+        <!-- Payment Form -->
+        <div class="card" id="payment-form">
+            <h3 style="margin-top:0; color: var(--primary);" id="t-pay-title">Submit Payment</h3>
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px;">
+                <b id="t-selected-pkg">Package:</b> <span id="selected-plan" style="color: var(--primary); font-weight: bold;">...</span><br>
+                <b id="t-amount">Amount:</b> <span id="selected-price" style="color: var(--danger); font-weight: bold;">...</span>
+            </div>
+            
+            <div style="background: #e8f0fe; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; border: 1px solid #cce0ff;">
+                <strong>Payment Numbers (Send Money):</strong><br>
+                ✅ Bkash: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
+                ✅ Nagad: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
+                ✅ Rocket: <b style="cursor: pointer; color: #1a73e8; text-decoration: underline;" onclick="copyNumber('01757481646')">01757481646</b><br>
+                <i style="font-size: 10px; color: var(--muted);">(Tap number to copy)</i>
+            </div>
+
+            <!-- Payment Method Selection Chips -->
+            <div class="form-group">
+                <label id="t-method">Select Payment Method (পেমেন্ট মাধ্যম)</label>
+                <div class="chip-container">
+                    <div class="chip active" onclick="setMethod(this, 'Bkash')">Bkash</div>
+                    <div class="chip" onclick="setMethod(this, 'Nagad')">Nagad</div>
+                    <div class="chip" onclick="setMethod(this, 'Rocket')">Rocket</div>
+                    <div class="chip" onclick="setMethod(this, 'Binance')">Binance</div>
+                </div>
+                <input type="hidden" id="selected-method" value="Bkash">
+            </div>
+
+            <div class="form-group">
+                <label id="t-sender">Sender Number</label>
+                <input type="text" id="sender-number" placeholder="e.g. 017XXXXXXXX">
+            </div>
+            <div class="form-group">
+                <label id="t-trxid">Transaction ID (TrxID)</label>
+                <input type="text" id="trx-id" placeholder="e.g. 9H6A2B...">
+            </div>
+            <button class="btn btn-primary" onclick="submitPayment()" id="btn-submit-pay">Submit to Admin</button>
+            <button class="btn btn-outline" onclick="goBack('payment-form', 'packages-section')" id="btn-cancel-3">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ================= ADMIN DASHBOARD ================= -->
+    <div id="admin-section" class="card" style="display: none; text-align: center;">
+        <h2 style="color: var(--text);">👑 Super Admin</h2>
+        <p style="font-size: 13px; color: var(--muted);">Welcome to the Web App.</p>
+        <p style="font-size: 14px; font-weight: 500; color: var(--primary); background: #e8f0fe; padding: 15px; border-radius: 10px;">
+            Please use the <b>Telegram Bot Menu</b> to add users, edit packages, and manage the system.
+        </p>
+        <button class="btn btn-outline" onclick="tg.close()">Close Web App</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Language Dictionary
+        const dict = {
+            en: {
+                greeting: "Hello,", searches: "Searches", leads: "Leads", timeLeft: "Subscription Time Left",
+                days: "Days", hrs: "Hrs", mins: "Min", expired: "⚠️ ACCOUNT EXPIRED!",
+                btnScrape: "🚀 Start Scraping", btnSub: "💎 Subscription & Packages",
+                scrapeTitle: "New Search", cat: "Category", loc: "Location", startNow: "Start Now", cancel: "Cancel",
+                pkgTitle: "Premium Packages", pkgDesc: "Select a package to upgrade your account.",
+                payTitle: "Submit Payment", selectedPkg: "Package:", amount: "Amount:",
+                method: "Select Payment Method", sender: "Sender Number", trxid: "Transaction ID (TrxID)", submitPay: "Submit Request"
+            },
+            bn: {
+                greeting: "স্বাগতম,", searches: "সার্চ", leads: "লিড", timeLeft: "সাবস্ক্রিপশনের মেয়াদ আছে",
+                days: "দিন", hrs: "ঘণ্টা", mins: "মিনিট", expired: "⚠️ আপনার মেয়াদ শেষ হয়ে গেছে!",
+                btnScrape: "🚀 স্ক্র্যাপিং শুরু করুন", btnSub: "💎 সাবস্ক্রিপশন ও প্যাকেজ",
+                scrapeTitle: "নতুন সার্চ", cat: "ক্যাটাগরি", loc: "লোকেশন (জায়গার নাম)", startNow: "শুরু করুন", cancel: "বাতিল",
+                pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "অ্যাকাউন্ট আপডেট করতে প্যাকেজ সিলেক্ট করুন।",
+                payTitle: "পেমেন্ট সাবমিট করুন", selectedPkg: "প্যাকেজ:", amount: "পরিমাণ:",
+                method: "পেমেন্ট মেথড নির্বাচন করুন", sender: "যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "ট্রানজেকশন আইডি (TrxID)", submitPay: "অ্যাডমিনকে পাঠান"
+            }
+        };
+
+        // Extract Params from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const uid = urlParams.get('uid') || '000';
+        const uName = decodeURIComponent(urlParams.get('name') || 'User');
+        const role = urlParams.get('role') || 'user'; 
+        const endsAtStr = urlParams.get('ends');
+        const teamLimit = parseInt(urlParams.get('team_limit') || '0');
+        const teamAdded = parseInt(urlParams.get('team_added') || '0');
+
+        // Set Language
+        let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
+        document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
+        applyLanguage(userLang);
+
+        // Load Role based UI
+        if (role === 'admin') {
+            document.getElementById('admin-section').style.display = 'block';
+            document.getElementById('user-section').style.display = 'none';
+        } else {
+            document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
+            document.getElementById('u-id-text').innerText = "UID: " + uid;
+            document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
+            document.getElementById('u-leads').innerText = urlParams.get('leads') || '0';
+
+            if (teamLimit > 0) {
+                document.getElementById('team-info').style.display = 'block';
+                document.getElementById('t-team-limit').innerText = userLang === 'bn' ? 
+                    `আপনার টিম মেম্বার: ${teamAdded} / ${teamLimit}` : `Team Members: ${teamAdded} / ${teamLimit}`;
+            }
+            startTimer(endsAtStr);
+        }
+
+        // Apply Texts
+        function applyLanguage(l) {
+            document.getElementById('t-searches').innerText = dict[l].searches;
+            document.getElementById('t-leads').innerText = dict[l].leads;
+            document.getElementById('t-time-left').innerText = dict[l].timeLeft;
+            document.getElementById('l-days').innerText = dict[l].days;
+            document.getElementById('l-hours').innerText = dict[l].hrs;
+            document.getElementById('l-mins').innerText = dict[l].mins;
+            document.getElementById('expired-msg').innerText = dict[l].expired;
+            document.getElementById('btn-scrape').innerText = dict[l].btnScrape;
+            document.getElementById('btn-sub').innerText = dict[l].btnSub;
+            document.getElementById('t-scrape-title').innerText = dict[l].scrapeTitle;
+            document.getElementById('t-cat').innerText = dict[l].cat;
+            document.getElementById('t-loc').innerText = dict[l].loc;
+            document.getElementById('btn-start-now').innerText = dict[l].startNow;
+            document.getElementById('btn-cancel-1').innerText = dict[l].cancel;
+            document.getElementById('btn-cancel-2').innerText = dict[l].cancel;
+            document.getElementById('btn-cancel-3').innerText = dict[l].cancel;
+            document.getElementById('t-pkg-title').innerText = dict[l].pkgTitle;
+            document.getElementById('t-pkg-desc').innerText = dict[l].pkgDesc;
+            document.getElementById('t-pay-title').innerText = dict[l].payTitle;
+            document.getElementById('t-selected-pkg').innerText = dict[l].selectedPkg;
+            document.getElementById('t-amount').innerText = dict[l].amount;
+            document.getElementById('t-method').innerText = dict[l].method;
+            document.getElementById('t-sender').innerText = dict[l].sender;
+            document.getElementById('t-trxid').innerText = dict[l].trxid;
+            document.getElementById('btn-submit-pay').innerText = dict[l].submitPay;
+        }
+
+        function startTimer(ends) {
+            if (ends === 'expired') {
+                document.getElementById('countdown').style.display = 'none';
+                document.getElementById('expired-msg').style.display = 'block';
+                document.getElementById('btn-scrape').style.display = 'none';
+            } else if (ends && ends !== 'N/A') {
+                const endsAt = new Date(ends).getTime();
+                setInterval(() => {
+                    const distance = endsAt - new Date().getTime();
+                    if (distance < 0) {
+                        document.getElementById('countdown').style.display = 'none';
+                        document.getElementById('expired-msg').style.display = 'block';
+                        document.getElementById('btn-scrape').style.display = 'none';
+                        return;
+                    }
+                    document.getElementById('t-days').innerText = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0');
+                    document.getElementById('t-hours').innerText = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
+                    document.getElementById('t-mins').innerText = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+                }, 1000);
+            } else {
+                document.getElementById('t-days').innerText = "∞";
+                document.getElementById('t-hours').innerText = "∞";
+                document.getElementById('t-mins').innerText = "∞";
+            }
+        }
+
+        function showScrapeForm() { goBack('main-buttons', 'scrape-form'); }
+        function showPackages() { goBack('main-buttons', 'packages-section'); }
+        function openPaymentForm(plan, price) {
+            goBack('packages-section', 'payment-form');
+            document.getElementById('selected-plan').innerText = plan;
+            document.getElementById('selected-price').innerText = price;
+        }
+        function goBack(currentId, targetId = 'main-buttons') {
+            document.getElementById(currentId).style.display = 'none';
+            document.getElementById(targetId).style.display = 'block';
+        }
+        function toggleCustomCat() {
+            document.getElementById('custom-cat-group').style.display = document.getElementById('cat-select').value === 'Custom' ? 'block' : 'none';
+        }
+        
+        function copyNumber(num) {
+            navigator.clipboard.writeText(num);
+            tg.showAlert(userLang === 'bn' ? `নাম্বার কপি করা হয়েছে: ${num}` : `Number Copied: ${num}`);
+        }
+
+        function setMethod(element, method) {
+            document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            document.getElementById('selected-method').value = method;
+        }
+
+        // ================= 100% CRASH-PROOF DIRECT API COMMUNICATION =================
+        async function submitScrape() {
+            let cat = document.getElementById('cat-select').value;
+            if (cat === 'Custom') cat = document.getElementById('custom-cat').value;
+            let loc = document.getElementById('loc-input').value;
+            
+            if (!cat || !loc) { 
+                tg.showAlert(userLang === 'bn' ? "ক্যাটাগরি এবং লোকেশন দিন!" : "Provide Category and Location!"); 
+                return; 
+            }
+            
+            let btn = document.getElementById('btn-start-now');
+            btn.innerText = "Processing..."; 
+            btn.disabled = true;
+
+            let query = `${cat} in ${loc}`;
+            
+            try {
+                // Send directly to our Python backend server running on Render
+                await fetch('/api/scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: uid, uname: uName, query: query })
+                });
+                
+                // Immediately close WebApp, Bot will reply in the chat!
+                tg.close();
+            } catch (error) {
+                tg.showAlert("Error sending request. Please try again.");
+                btn.innerText = dict[userLang].startNow;
+                btn.disabled = false;
+            }
+        }
+
+        async function submitPayment() {
+            let plan = document.getElementById('selected-plan').innerText;
+            let price = document.getElementById('selected-price').innerText;
+            let method = document.getElementById('selected-method').value;
+            let senderNum = document.getElementById('sender-number').value;
+            let trxid = document.getElementById('trx-id').value;
+
+            if (!senderNum || !trxid) { 
+                tg.showAlert(userLang === 'bn' ? "নাম্বার এবং TrxID দিন!" : "Provide Number and TrxID!"); 
+                return; 
+            }
+
+            let btn = document.getElementById('btn-submit-pay');
+            btn.innerText = "Sending to Admin..."; 
+            btn.disabled = true;
+
+            let fullSender = `${method} - ${senderNum}`;
+
+            try {
+                // Send directly to our Python backend server
+                await fetch('/api/payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        uid: uid, uname: uName, 
+                        plan: plan, price: price, 
+                        sender: fullSender, trxid: trxid 
+                    })
+                });
+
+                tg.close();
+            } catch (error) {
+                tg.showAlert("Error sending payment. Please try again.");
+                btn.innerText = dict[userLang].submitPay;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
