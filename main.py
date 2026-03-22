@@ -23,7 +23,7 @@ from firebase_admin import credentials, db
 from playwright.async_api import async_playwright
 import aiohttp
 
-# --- Load Env ---
+# --- Load Environment Variables ---
 load_dotenv()
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,30 +38,43 @@ FB_URL = os.environ.get('FIREBASE_DATABASE_URL')
 RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
 PORT = int(os.environ.get('PORT', '8080'))
 
+# Web App URL (GitHub Pages / Render)
 WEB_APP_URL = os.environ.get('WEB_APP_URL', 'https://your-username.github.io/skyzone-app/index.html')
 
+# --- Global State ---
 active_tasks = {} 
-recent_logs =[] 
+recent_logs = [] 
 BOT_USERNAME = "" 
 
-CATEGORIES =["Restaurants", "IT Companies", "Hospitals", "Real Estate", "Plumbers", "Gyms", "Hotels", "Coffee Shops", "Car Repair", "Dentists"]
+CATEGORIES =[
+    "Restaurants", "IT Companies", "Hospitals", "Real Estate", 
+    "Plumbers", "Gyms", "Hotels", "Coffee Shops", "Car Repair", "Dentists"
+]
 
-# --- Firebase Init ---
+# --- Firebase Initialization ---
 try:
     if not firebase_admin._apps:
         cred_dict = json.loads(FB_JSON) if isinstance(FB_JSON, str) and FB_JSON.startswith('{') else FB_JSON
-        if isinstance(cred_dict, str) and os.path.exists(cred_dict): cred = credentials.Certificate(cred_dict)
-        else: cred = credentials.Certificate(cred_dict)
+        if isinstance(cred_dict, str) and os.path.exists(cred_dict): 
+            cred = credentials.Certificate(cred_dict)
+        else: 
+            cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred, {'databaseURL': FB_URL})
-        logger.info("🔥 Firebase Connected!")
+        logger.info("🔥 Firebase Connected Successfully!")
 except Exception as e:
     logger.error(f"❌ Firebase Init Error: {e}")
 
 # --- Helper Functions ---
-def is_super_admin(uid): return str(uid) == str(SUPER_ADMIN_ID)
+def is_super_admin(uid): 
+    return str(uid) == str(SUPER_ADMIN_ID)
 
 def get_user_data(uid):
-    if is_super_admin(uid): return {"name": "Super Admin", "sub_ends": (datetime.now() + timedelta(days=3650)).isoformat(), "lt_searches": 0, "lt_leads": 0, "team_limit": 0, "team_added": 0}
+    if is_super_admin(uid): 
+        return {
+            "name": "Super Admin", 
+            "sub_ends": (datetime.now() + timedelta(days=3650)).isoformat(), 
+            "lt_searches": 0, "lt_leads": 0, "team_limit": 0, "team_added": 0
+        }
     return db.reference(f'bot_users/{uid}').get()
 
 def check_subscription(uid):
@@ -86,6 +99,7 @@ async def post_init(app: Application):
     global BOT_USERNAME
     bot_info = await app.bot.get_me()
     BOT_USERNAME = bot_info.username
+    logger.info(f"🤖 Bot Username: @{BOT_USERNAME}")
 
 async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
     if not RENDER_URL: return
@@ -97,29 +111,39 @@ async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
 async def analyze_with_ai(context, is_error=False):
     if not GROQ_API_KEY or not LOG_GROUP_ID: return
     if not recent_logs: return
+
     logs_text = "\n".join(recent_logs)
     recent_logs.clear()
     
-    prompt = f"Expert AI System Analyst. Analyze this Google Maps Scraper bot ERROR log and give an emergency Bengali report:\n{logs_text}" if is_error else f"Expert AI System Analyst. Analyze these B2B Scraper logs and give a short Bengali report on team performance and errors:\n{logs_text}"
+    if is_error:
+        prompt = f"Expert AI System Analyst. Analyze this Google Maps Scraper bot ERROR log and give an emergency Bengali report:\n{logs_text}"
+    else:
+        prompt = f"Expert AI System Analyst. Analyze these B2B Scraper logs and give a short Bengali report on team performance and errors:\n{logs_text}"
+
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         payload = {"model": "llama-3.3-70b-versatile", "messages":[{"role": "user", "content": prompt}], "temperature": 0.7}
+        
         response = requests.post(url, headers=headers, json=payload, timeout=30)
         if response.status_code == 200:
             ai_reply = response.json()['choices'][0]['message']['content']
             header = "🚨 **AI EMERGENCY ALERT:**" if is_error else "🧠 **AI Auto Analysis Report:**"
             await context.bot.send_message(chat_id=LOG_GROUP_ID, text=f"{header}\n\n{ai_reply}", parse_mode='Markdown')
-    except: pass
+    except Exception as e:
+        logger.error(f"AI Error: {e}")
 
 async def send_log(context, user_name, user_id, action):
     log_text = f"👤 **{user_name}** (`{user_id}`)\n📌 অ্যাকশন: {action}\n🕒 সময়: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     if LOG_GROUP_ID:
         try: await context.bot.send_message(chat_id=LOG_GROUP_ID, text=log_text, parse_mode='Markdown')
         except: pass
+
     recent_logs.append(log_text)
-    if "এরর" in action or "Error" in action or "Executable doesn't exist" in action: asyncio.create_task(analyze_with_ai(context, is_error=True))
-    elif len(recent_logs) >= 15: asyncio.create_task(analyze_with_ai(context, is_error=False))
+    if "এরর" in action or "Error" in action or "Executable doesn't exist" in action: 
+        asyncio.create_task(analyze_with_ai(context, is_error=True))
+    elif len(recent_logs) >= 15: 
+        asyncio.create_task(analyze_with_ai(context, is_error=False))
 
 async def extract_email(url):
     try:
@@ -128,7 +152,7 @@ async def extract_email(url):
                 if response.status == 200:
                     html = await response.text()
                     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', html)
-                    valid_emails =[e for e in emails if not any(x in e.lower() for x in['.png', '.jpg', 'sentry', 'example'])]
+                    valid_emails = [e for e in emails if not any(x in e.lower() for x in['.png', '.jpg', 'sentry', 'example'])]
                     return valid_emails[0] if valid_emails else "N/A"
     except: pass
     return "N/A"
@@ -136,6 +160,7 @@ async def extract_email(url):
 # --- Scraper Engine ---
 async def scraper_worker(query, user_id, user_name, context):
     await send_log(context, user_name, user_id, f"স্ক্র্যাপিং শুরু করেছে: `{query}`")
+    
     if not is_super_admin(user_id):
         user_ref = db.reference(f'bot_users/{user_id}')
         current_searches = user_ref.child('lt_searches').get() or 0
@@ -144,13 +169,20 @@ async def scraper_worker(query, user_id, user_name, context):
     ref = db.reference(f'gmaps_leads/{user_id}')
     leads_found = 0
     session_leads =[] 
-    status_msg = await context.bot.send_message(chat_id=user_id, text=f"🚀 **{query}** এর জন্য ম্যাপে খোঁজা হচ্ছে...\nদয়া করে অপেক্ষা করুন।", parse_mode='Markdown')
+
+    status_msg = await context.bot.send_message(
+        chat_id=user_id, 
+        text=f"🚀 **{query}** এর জন্য ম্যাপে খোঁজা হচ্ছে...\nদয়া করে অপেক্ষা করুন।", 
+        parse_mode='Markdown'
+    )
 
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
             page = await browser.new_page()
-            await page.goto(f"https://www.google.com/maps/search/{query.replace(' ', '+')}", timeout=60000)
+            
+            search_url = f"https://www.google.com/maps/search/{query.replace(' ', '+')}"
+            await page.goto(search_url, timeout=60000)
             await page.wait_for_timeout(5000)
             
             scrollable_div = await page.query_selector('div[role="feed"]')
@@ -162,13 +194,22 @@ async def scraper_worker(query, user_id, user_name, context):
             
             places = await page.query_selector_all('a[href*="/maps/place/"]')
             place_urls = list(set([await place.get_attribute('href') for place in places if await place.get_attribute('href')]))
+            
             total_places = len(place_urls)
-            await context.bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"🔍 **{total_places}** টি বিজনেস পাওয়া গেছে।\nডেটা সেভ করা হচ্ছে...", parse_mode='Markdown')
+            await context.bot.edit_message_text(
+                chat_id=user_id, message_id=status_msg.message_id, 
+                text=f"🔍 **{total_places}** টি বিজনেস পাওয়া গেছে।\nডেটা সেভ করা হচ্ছে...", parse_mode='Markdown'
+            )
 
             for idx, url in enumerate(place_urls):
                 if user_id not in active_tasks: break
                 if idx % 3 == 0 or idx == 0:
-                    try: await context.bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"⏳ **লাইভ স্ক্র্যাপিং...**\n🎯 টার্গেট: `{query}`\n🔍 পাওয়া গেছে: **{total_places}**\n🔄 চেক: **{idx}**\n✅ সেভ: **{leads_found}**", parse_mode='Markdown')
+                    try: 
+                        await context.bot.edit_message_text(
+                            chat_id=user_id, message_id=status_msg.message_id, 
+                            text=f"⏳ **লাইভ স্ক্র্যাপিং...**\n🎯 টার্গেট: `{query}`\n🔍 পাওয়া গেছে: **{total_places}**\n🔄 চেক: **{idx}**\n✅ সেভ: **{leads_found}**", 
+                            parse_mode='Markdown'
+                        )
                     except: pass
 
                 try:
@@ -178,9 +219,11 @@ async def scraper_worker(query, user_id, user_name, context):
                     name_el = await page.query_selector('h1')
                     name = await name_el.inner_text() if name_el else "Unknown"
                     
-                    rating = 0.0; total_reviews = 0
+                    rating = 0.0
+                    total_reviews = 0
+                    
                     rating_text = await page.evaluate('''() => {
-                        let el = document.querySelector('span[aria-label*="stars"], div[aria-label*="stars"]');
+                        let el = document.querySelector('span[aria-label*="stars"], div[aria-label*="stars"], button[aria-label*="stars"]');
                         if (el) return el.getAttribute('aria-label');
                         let fallback = document.querySelector('.F7nice');
                         return fallback ? fallback.innerText : '';
@@ -189,26 +232,43 @@ async def scraper_worker(query, user_id, user_name, context):
                     if rating_text:
                         r_match = re.search(r'([\d\.]+)\s*stars?', rating_text, re.IGNORECASE)
                         if r_match: rating = float(r_match.group(1))
+                        else:
+                            r_match2 = re.search(r'([\d\.]+)', rating_text)
+                            if r_match2: rating = float(r_match2.group(1))
+                            
                         rev_match = re.search(r'([\d,]+)\s*reviews?', rating_text, re.IGNORECASE)
                         if rev_match: total_reviews = int(rev_match.group(1).replace(',', ''))
+                        else:
+                            rev_match2 = re.search(r'\(([\d,]+)\)', rating_text)
+                            if rev_match2: total_reviews = int(rev_match2.group(1).replace(',', ''))
 
+                    # --- Deep Extraction: Reviews Tab ---
                     r5 = r4 = r3 = r2 = r1 = 0
                     try:
-                        reviews_tab = await page.query_selector('button[aria-label*="Reviews"], button:has-text("Reviews")')
+                        reviews_tab = await page.query_selector('button[aria-label*="Reviews"], button:has-text("Reviews"), div[role="tab"]:has-text("Reviews")')
                         if reviews_tab:
                             await reviews_tab.click()
-                            await page.wait_for_timeout(2000)
+                            await page.wait_for_timeout(2500) 
+                            
                             histogram_data = await page.evaluate('''() => {
                                 let data = {5:0, 4:0, 3:0, 2:0, 1:0};
                                 let elements = document.querySelectorAll('[aria-label*="stars,"]');
                                 elements.forEach(el => {
-                                    let match = el.getAttribute('aria-label').match(/(\d)\s*stars?,\s*([\d,]+)/i);
-                                    if(match) data[parseInt(match[1])] = parseInt(match[2].replace(/,/g, ''));
+                                    let label = el.getAttribute('aria-label');
+                                    let match = label.match(/(\d)\s*stars?,\s*([\d,]+)\s*reviews?/i);
+                                    if(match) {
+                                        data[parseInt(match[1])] = parseInt(match[2].replace(/,/g, ''));
+                                    }
                                 });
                                 return data;
                             }''')
-                            r5, r4, r3, r2, r1 = histogram_data.get('5',0), histogram_data.get('4',0), histogram_data.get('3',0), histogram_data.get('2',0), histogram_data.get('1',0)
-                    except: pass
+                            
+                            r5 = histogram_data.get('5', 0)
+                            r4 = histogram_data.get('4', 0)
+                            r3 = histogram_data.get('3', 0)
+                            r2 = histogram_data.get('2', 0)
+                            r1 = histogram_data.get('1', 0)
+                    except Exception: pass
                         
                     phone_el = await page.query_selector('button[data-item-id^="phone:"]')
                     phone = await phone_el.get_attribute('aria-label') if phone_el else "N/A"
@@ -220,10 +280,12 @@ async def scraper_worker(query, user_id, user_name, context):
                     
                     web_el = await page.query_selector('a[data-item-id="authority"]')
                     website = await web_el.get_attribute('href') if web_el else "N/A"
+                    
                     email = await extract_email(website) if website != "N/A" else "N/A"
                     
                     safe_key = re.sub(r'\D', '', phone) if phone != "N/A" else re.sub(r'[^a-zA-Z0-9]', '', name)
                     if not safe_key: safe_key = str(int(time.time()))
+                    
                     if ref.child(safe_key).get(): continue
                         
                     lead_data = {
@@ -235,8 +297,10 @@ async def scraper_worker(query, user_id, user_name, context):
                     ref.child(safe_key).set(lead_data)
                     session_leads.append(lead_data) 
                     leads_found += 1
-                except: continue
+                except Exception: continue
+            
             await browser.close()
+            
     except Exception as e:
         await send_log(context, user_name, user_id, f"❌ স্ক্র্যাপিং এরর: {str(e)[:100]}")
         try: await context.bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"❌ স্ক্র্যাপিং এরর।")
@@ -245,6 +309,7 @@ async def scraper_worker(query, user_id, user_name, context):
         return
     
     if user_id in active_tasks: del active_tasks[user_id]
+    
     if not is_super_admin(user_id) and leads_found > 0:
         user_ref = db.reference(f'bot_users/{user_id}')
         current_leads = user_ref.child('lt_leads').get() or 0
@@ -283,10 +348,10 @@ def get_main_menu(uid):
     team_added = user_data.get('team_added', 0) if user_data else 0
     role = 'admin' if is_super_admin(uid) else 'user'
     
-    # 🌟 PASSING FB_URL TO WEB APP FOR DIRECT DATABASE COMMUNICATION
     web_url = f"{WEB_APP_URL}?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
     
-    keyboard =[[InlineKeyboardButton("🌐 প্রোফাইল ও ড্যাশবোর্ড (Web App)", web_app=WebAppInfo(url=web_url))]]
+    keyboard = [[InlineKeyboardButton("🌐 প্রোফাইল ও ড্যাশবোর্ড (Web App)", web_app=WebAppInfo(url=web_url))]]
+    
     hidden_btns = db.reference('bot_settings/hidden_buttons').get() or {}
     
     if is_super_admin(uid) or not hidden_btns.get('btn_target'):
@@ -297,10 +362,12 @@ def get_main_menu(uid):
         keyboard.append([InlineKeyboardButton("📥 আমার লিড ডাউনলোড", callback_data='download_leads')])
     if is_super_admin(uid) or not hidden_btns.get('btn_clear'):
         keyboard.append([InlineKeyboardButton("🗑️ প্যানেল ক্লিয়ার করুন", callback_data='soft_delete_leads')])
+        
     if team_limit > 0 and (is_super_admin(uid) or not hidden_btns.get('btn_team')):
         keyboard.append([InlineKeyboardButton("➕ মেম্বার অ্যাড করুন (Team)", callback_data='tl_add_member')])
 
     keyboard.append([InlineKeyboardButton("🔄 রিফ্রেশ (Restart)", callback_data='refresh_bot')])
+
     if is_super_admin(uid):
         keyboard.append([InlineKeyboardButton("👑 সুপার অ্যাডমিন প্যানেল", callback_data='super_admin_panel')])
     
@@ -315,10 +382,13 @@ async def show_toggle_menu(message_obj, uid):
     hidden = db.reference('bot_settings/hidden_buttons').get() or {}
     def get_icon(key): return "❌" if hidden.get(key) else "✅"
 
-    btns =[[InlineKeyboardButton(f"{get_icon('btn_target')} টার্গেট সেট", callback_data='tgl_btn_target')],[InlineKeyboardButton(f"{get_icon('btn_scrape')} শুরু/বন্ধ করুন", callback_data='tgl_btn_scrape')],[InlineKeyboardButton(f"{get_icon('btn_download')} লিড ডাউনলোড", callback_data='tgl_btn_download')],[InlineKeyboardButton(f"{get_icon('btn_clear')} প্যানেল ক্লিয়ার", callback_data='tgl_btn_clear')],[InlineKeyboardButton(f"{get_icon('btn_team')} টিম মেম্বার অ্যাড", callback_data='tgl_btn_team')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='super_admin_panel')]
+    btns = [[InlineKeyboardButton(f"{get_icon('btn_target')} টার্গেট সেট", callback_data='tgl_btn_target')],[InlineKeyboardButton(f"{get_icon('btn_scrape')} শুরু/বন্ধ করুন", callback_data='tgl_btn_scrape')],[InlineKeyboardButton(f"{get_icon('btn_download')} লিড ডাউনলোড", callback_data='tgl_btn_download')],[InlineKeyboardButton(f"{get_icon('btn_clear')} প্যানেল ক্লিয়ার", callback_data='tgl_btn_clear')],[InlineKeyboardButton(f"{get_icon('btn_team')} টিম মেম্বার অ্যাড", callback_data='tgl_btn_team')],
+        [InlineKeyboardButton("🔙 ব্যাক", callback_data='super_admin_panel')]
     ]
-    if hasattr(message_obj, 'edit_text'): await message_obj.edit_text("👁️ **বাটন হাইড/শো কন্ট্রোল:**\n(❌ মানে হাইড, ✅ মানে শো)", reply_markup=InlineKeyboardMarkup(btns))
-    else: await message_obj.reply_text("👁️ **বাটন হাইড/শো কন্ট্রোল:**\n(❌ মানে হাইড, ✅ মানে শো)", reply_markup=InlineKeyboardMarkup(btns))
+    if hasattr(message_obj, 'edit_text'):
+        await message_obj.edit_text("👁️ **বাটন হাইড/শো কন্ট্রোল:**\n(❌ মানে হাইড, ✅ মানে শো)", reply_markup=InlineKeyboardMarkup(btns))
+    else:
+        await message_obj.reply_text("👁️ **বাটন হাইড/শো কন্ট্রোল:**\n(❌ মানে হাইড, ✅ মানে শো)", reply_markup=InlineKeyboardMarkup(btns))
 
 # --- Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -326,12 +396,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uname = update.effective_user.first_name
     text = update.message.text.strip()
     
-    # 🌟 100% BULLETPROOF FIREBASE COMMUNICATION FROM WEB APP
+    # 🌟 CRASH-PROOF DEEP LINK CATCHER (From Web App via Firebase)
     if text == '/start do_scrape':
         req = db.reference(f'pending_requests/{uid}').get()
         if req and req.get('action') == 'scrape':
             query = req.get('query')
-            db.reference(f'pending_requests/{uid}').delete() # Clear request
+            db.reference(f'pending_requests/{uid}').delete() 
             
             is_auth, sub_status = check_subscription(uid)
             if not is_auth:
@@ -352,7 +422,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             price = req.get('price', '')
             sender = req.get('sender', '')
             trxid = req.get('trxid', '')
-            db.reference(f'pending_requests/{uid}').delete() # Clear request
+            db.reference(f'pending_requests/{uid}').delete() 
             
             admin_msg = f"💰 **New Payment Received!**\n\n👤 **User:** {uname} (`{uid}`)\n📦 **Package:** {plan}\n💵 **Amount:** {price}\n📱 **Sender No:** `{sender}`\n🔢 **TrxID:** `{trxid}`\n\n✅ To approve, copy this command and send:\n`/approve_sub {uid} 30`"
             await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown')
@@ -366,8 +436,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     is_auth, sub_status = check_subscription(uid)
     if not is_auth:
-        if sub_status == "not_found": await update.message.reply_text("⛔ আপনি অনুমোদিত নন।")
-        elif sub_status == "expired": await update.message.reply_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**\n\nনতুন করে রিনিউ করতে বা প্যাকেজ দেখতে নিচের '🌐 ওয়েব অ্যাপ' বাটনে ক্লিক করুন।", reply_markup=get_expired_menu(uid))
+        if sub_status == "not_found": 
+            await update.message.reply_text("⛔ আপনি অনুমোদিত নন। অ্যাডমিনের সাথে যোগাযোগ করুন।")
+        elif sub_status == "expired": 
+            await update.message.reply_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**\n\nনতুন করে রিনিউ করতে বা প্যাকেজ দেখতে নিচের '🌐 ওয়েব অ্যাপ' বাটনে ক্লিক করুন।", reply_markup=get_expired_menu(uid))
         return
 
     await update.message.reply_text("🗺️ **Google Maps Scraper Dashboard**\n\nআপনার কাজ শুরু করতে নিচের বাটন ব্যবহার করুন:", reply_markup=get_main_menu(uid))
@@ -405,7 +477,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except: pass 
     
     is_auth, sub_status = check_subscription(uid)
-    if not is_auth and query.data not in['main_menu', 'refresh_bot']:
+    if not is_auth and query.data not in ['main_menu', 'refresh_bot']:
         await query.edit_message_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**", reply_markup=get_expired_menu(uid))
         return
 
@@ -487,7 +559,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == 'super_admin_panel':
         if not is_super_admin(uid): return
-        btns =[[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
+        btns = [[InlineKeyboardButton("➕ ইউজার অ্যাড (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
         ]
         await query.edit_message_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
         
