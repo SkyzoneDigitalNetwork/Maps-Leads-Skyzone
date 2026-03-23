@@ -24,13 +24,12 @@ from playwright.async_api import async_playwright
 import aiohttp
 from aiohttp import web
 
-# ==========================================
-# --- ENVIRONMENT VARIABLES & CONFIG SETUP ---
-# ==========================================
+# --- Load Env ---
 load_dotenv()
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# --- Variables ---
 TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 SUPER_ADMIN_ID = os.environ.get('SUPER_ADMIN_ID')
 LOG_GROUP_ID = os.environ.get('LOG_GROUP_ID')
@@ -40,15 +39,14 @@ FB_URL = os.environ.get('FIREBASE_DATABASE_URL')
 RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
 PORT = int(os.environ.get('PORT', '8080'))
 
-# WEB APP URL Configuration (Using Render)
+# WEB_APP_URL will automatically use Render's URL
 WEB_APP_URL = RENDER_URL if RENDER_URL else f"http://localhost:{PORT}"
 
-# --- Global States ---
+# --- Global State ---
 active_tasks = {} 
 recent_logs =[] 
 BOT_USERNAME = "" 
 
-# Expanded Categories as requested (Minimum 20 Categories)
 CATEGORIES =[
     "Restaurants", "IT Companies", "Hospitals", "Real Estate", 
     "Plumbers", "Gyms", "Hotels", "Coffee Shops", "Car Repair", "Dentists",
@@ -56,9 +54,7 @@ CATEGORIES =[
     "Travel Agencies", "Banks", "Mechanics", "Schools", "Architects"
 ]
 
-# ==========================================
-# --- FIREBASE INITIALIZATION ---
-# ==========================================
+# --- Firebase Initialization ---
 try:
     if not firebase_admin._apps:
         cred_dict = json.loads(FB_JSON) if isinstance(FB_JSON, str) and FB_JSON.startswith('{') else FB_JSON
@@ -71,24 +67,20 @@ try:
 except Exception as e:
     logger.error(f"❌ Firebase Init Error: {e}")
 
-# ==========================================
-# --- HELPER & VERIFICATION FUNCTIONS ---
-# ==========================================
+# --- Helper Functions ---
 def is_super_admin(uid): 
     return str(uid) == str(SUPER_ADMIN_ID)
 
 def get_user_data(uid):
-    """Fetch user data, grant absolute limits to super admin."""
     if is_super_admin(uid): 
         return {
             "name": "Super Admin", 
             "sub_ends": (datetime.now() + timedelta(days=3650)).isoformat(), 
-            "lt_searches": 0, "lt_leads": 0, "team_limit": 9999, "team_added": 0
+            "lt_searches": 0, "lt_leads": 0, "team_limit": 0, "team_added": 0
         }
     return db.reference(f'bot_users/{uid}').get()
 
 def check_subscription(uid):
-    """Check if the user has an active subscription or trial."""
     if is_super_admin(uid): return True, None
     user = get_user_data(uid)
     if not user: return False, "not_found"
@@ -102,43 +94,34 @@ def check_subscription(uid):
         sub_ends_str = user.get('sub_ends')
 
     if not sub_ends_str: return False, "expired"
-    try:
-        sub_ends = datetime.fromisoformat(sub_ends_str)
-        if datetime.now() > sub_ends: return False, "expired"
-        return True, sub_ends
-    except:
-        return False, "expired"
+    sub_ends = datetime.fromisoformat(sub_ends_str)
+    if datetime.now() > sub_ends: return False, "expired"
+    return True, sub_ends
 
 async def post_init(app: Application):
-    """Fetch Bot Username securely on Startup"""
     global BOT_USERNAME
     bot_info = await app.bot.get_me()
     BOT_USERNAME = bot_info.username
     logger.info(f"🤖 Bot Username: @{BOT_USERNAME}")
 
-async def keep_alive_task():
-    """Keeps the Render Server awake"""
+async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
     if not RENDER_URL: return
     while True:
         try: requests.get(RENDER_URL, timeout=10)
         except: pass
         await asyncio.sleep(600)
 
-# ==========================================
-# --- AI & LOGGING ENGINE ---
-# ==========================================
 async def analyze_with_ai(bot, is_error=False):
-    """Sends collected logs to Groq AI for detailed analysis in Bengali."""
     if not GROQ_API_KEY or not LOG_GROUP_ID: return
     if not recent_logs: return
 
     logs_text = "\n".join(recent_logs)
-    recent_logs.clear() # Clear immediately to avoid duplicate processing
+    recent_logs.clear()
     
     if is_error:
-        prompt = f"Expert AI System Analyst. Analyze this Google Maps Scraper bot ERROR/Crash log and give an emergency Bengali report. Mention exactly what caused the issue:\n{logs_text}"
+        prompt = f"Expert AI System Analyst. Analyze this Google Maps Scraper bot ERROR log and give an emergency Bengali report:\n{logs_text}"
     else:
-        prompt = f"Expert AI System Analyst. Analyze these B2B Scraper user logs and give a short Bengali report on team performance, what categories they are searching, and system health:\n{logs_text}"
+        prompt = f"Expert AI System Analyst. Analyze these B2B Scraper logs and give a short Bengali report on team performance and errors:\n{logs_text}"
 
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
@@ -151,41 +134,36 @@ async def analyze_with_ai(bot, is_error=False):
             header = "🚨 **AI EMERGENCY ALERT:**" if is_error else "🧠 **AI Auto Analysis Report:**"
             await bot.send_message(chat_id=LOG_GROUP_ID, text=f"{header}\n\n{ai_reply}", parse_mode='Markdown')
     except Exception as e:
-        logger.error(f"AI Connection Error: {e}")
+        logger.error(f"AI Error: {e}")
 
 async def send_log(bot, user_name, user_id, action):
-    """Sends action logs directly to the Log Group and prepares them for AI."""
     log_text = f"👤 **{user_name}** (`{user_id}`)\n📌 অ্যাকশন: {action}\n🕒 সময়: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     if LOG_GROUP_ID:
         try: await bot.send_message(chat_id=LOG_GROUP_ID, text=log_text, parse_mode='Markdown')
         except: pass
 
     recent_logs.append(log_text)
-    # IMMEDIATE TRIGGER ON ERRORS
-    if any(err_kw in action.lower() for err_kw in["error", "এরর", "exception", "failed", "crash"]): 
+    # 🌟 NEW: Send emergency AI report immediately if an error occurs
+    if "Error" in action or "এরর" in action or "Executable doesn't exist" in action: 
         asyncio.create_task(analyze_with_ai(bot, is_error=True))
     elif len(recent_logs) >= 15: 
         asyncio.create_task(analyze_with_ai(bot, is_error=False))
 
 async def extract_email(url):
-    """Extracts email directly from a website's homepage"""
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=10) as response:
                 if response.status == 200:
                     html = await response.text()
                     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', html)
-                    valid_emails =[e for e in emails if not any(x in e.lower() for x in['.png', '.jpg', 'sentry', 'example', 'domain'])]
+                    valid_emails =[e for e in emails if not any(x in e.lower() for x in['.png', '.jpg', 'sentry', 'example'])]
                     return valid_emails[0] if valid_emails else "N/A"
     except: pass
     return "N/A"
 
-# ==========================================
-# --- SCRAPING ENGINE WITH PLAYWRIGHT ---
-# ==========================================
+# --- Scraper Engine ---
 async def scraper_worker(query, user_id, user_name, bot):
-    """Core Google Maps Scraper fetching Reviews and Business Links."""
-    await send_log(bot, user_name, user_id, f"স্ক্র্যাপিং শুরু করেছে টার্গেট: `{query}`")
+    await send_log(bot, user_name, user_id, f"স্ক্র্যাপিং শুরু করেছে: `{query}`")
     
     if not is_super_admin(user_id):
         user_ref = db.reference(f'bot_users/{user_id}')
@@ -198,7 +176,7 @@ async def scraper_worker(query, user_id, user_name, bot):
 
     status_msg = await bot.send_message(
         chat_id=user_id, 
-        text=f"🚀 **{query}** এর জন্য গুগল ম্যাপে খোঁজা হচ্ছে...\nদয়া করে অপেক্ষা করুন।", 
+        text=f"🚀 **{query}** এর জন্য ম্যাপে খোঁজা হচ্ছে...\nদয়া করে অপেক্ষা করুন।", 
         parse_mode='Markdown'
     )
 
@@ -211,7 +189,6 @@ async def scraper_worker(query, user_id, user_name, bot):
             await page.goto(search_url, timeout=60000)
             await page.wait_for_timeout(5000)
             
-            # Deep Scroll to capture maximum business listings
             scrollable_div = await page.query_selector('div[role="feed"]')
             if scrollable_div:
                 for _ in range(6):
@@ -219,26 +196,22 @@ async def scraper_worker(query, user_id, user_name, bot):
                     await page.evaluate('(element) => element.scrollBy(0, 3000)', scrollable_div)
                     await page.wait_for_timeout(2000)
             
-            # Capture Business Links
             places = await page.query_selector_all('a[href*="/maps/place/"]')
             place_urls = list(set([await place.get_attribute('href') for place in places if await place.get_attribute('href')]))
             
             total_places = len(place_urls)
             await bot.edit_message_text(
                 chat_id=user_id, message_id=status_msg.message_id, 
-                text=f"🔍 মোট **{total_places}** টি বিজনেস পাওয়া গেছে।\nএখন ডিপ-এক্সট্রাকশন করে ডেটা সেভ করা হচ্ছে...", parse_mode='Markdown'
+                text=f"🔍 **{total_places}** টি বিজনেস পাওয়া গেছে।\nডেটা সেভ করা হচ্ছে...", parse_mode='Markdown'
             )
 
-            # Loop through each place
             for idx, url in enumerate(place_urls):
                 if user_id not in active_tasks: break
-                
-                # Update status message every 3 records to avoid FloodWait limits
                 if idx % 3 == 0 or idx == 0:
                     try: 
                         await bot.edit_message_text(
                             chat_id=user_id, message_id=status_msg.message_id, 
-                            text=f"⏳ **লাইভ স্ক্র্যাপিং চলছে...**\n🎯 টার্গেট: `{query}`\n🔍 পাওয়া গেছে: **{total_places}**\n🔄 চেক করা হয়েছে: **{idx}**\n✅ সেভ হয়েছে: **{leads_found}**", 
+                            text=f"⏳ **লাইভ স্ক্র্যাপিং...**\n🎯 টার্গেট: `{query}`\n🔍 পাওয়া গেছে: **{total_places}**\n🔄 চেক: **{idx}**\n✅ সেভ: **{leads_found}**", 
                             parse_mode='Markdown'
                         )
                     except: pass
@@ -273,7 +246,7 @@ async def scraper_worker(query, user_id, user_name, bot):
                             rev_match2 = re.search(r'\(([\d,]+)\)', rating_text)
                             if rev_match2: total_reviews = int(rev_match2.group(1).replace(',', ''))
 
-                    # 🌟 DEEP EXTRACTION FOR HISTOGRAM
+                    # --- Deep Extraction: Reviews Tab ---
                     r5 = r4 = r3 = r2 = r1 = 0
                     try:
                         reviews_tab = await page.query_selector('button[aria-label*="Reviews"], button:has-text("Reviews"), div[role="tab"]:has-text("Reviews")')
@@ -299,9 +272,7 @@ async def scraper_worker(query, user_id, user_name, bot):
                             r3 = histogram_data.get('3', 0)
                             r2 = histogram_data.get('2', 0)
                             r1 = histogram_data.get('1', 0)
-                    except Exception as he:
-                        logger.error(f"Histogram error for {name}: {he}")
-                        pass
+                    except Exception: pass
                         
                     phone_el = await page.query_selector('button[data-item-id^="phone:"]')
                     phone = await phone_el.get_attribute('aria-label') if phone_el else "N/A"
@@ -316,33 +287,29 @@ async def scraper_worker(query, user_id, user_name, bot):
                     
                     email = await extract_email(website) if website != "N/A" else "N/A"
                     
-                    # Store the Direct Business Maps URL
-                    business_url = url
-                    
                     safe_key = re.sub(r'\D', '', phone) if phone != "N/A" else re.sub(r'[^a-zA-Z0-9]', '', name)
                     if not safe_key: safe_key = str(int(time.time()))
                     
                     if ref.child(safe_key).get(): continue
                         
-                    # Save to Firebase with business_url included
+                    # 🌟 NEW: Added Google Maps Link ('gmap_link': url)
                     lead_data = {
                         'name': name, 'rating': rating, 'total_reviews': total_reviews,
                         'stars_5': r5, 'stars_4': r4, 'stars_3': r3, 'stars_2': r2, 'stars_1': r1,
-                        'phone': phone, 'email': email, 'website': website, 'business_url': business_url, 'address': address,
+                        'phone': phone, 'email': email, 'website': website, 'address': address,
+                        'gmap_link': url, # Google Maps Business URL included
                         'query': query, 'date': datetime.now().isoformat(), 'is_deleted_by_user': False 
                     }
                     ref.child(safe_key).set(lead_data)
                     session_leads.append(lead_data) 
                     leads_found += 1
-                except Exception as ex: 
-                    await send_log(bot, user_name, user_id, f"Error processing listing: {ex}")
-                    continue
+                except Exception: continue
             
             await browser.close()
             
     except Exception as e:
-        await send_log(bot, user_name, user_id, f"❌ স্ক্র্যাপিং মেইন ক্র্যাশ এরর: {str(e)[:150]}")
-        try: await bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"❌ স্ক্র্যাপিং চলাকালীন এরর হয়েছে। দয়া করে রিফ্রেশ করে আবার চেষ্টা করুন।")
+        await send_log(bot, user_name, user_id, f"❌ Error: {str(e)[:100]}")
+        try: await bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"❌ Scraping error. Please try again.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data='main_menu')]]))
         except: pass
         if user_id in active_tasks: del active_tasks[user_id]
         return
@@ -357,30 +324,28 @@ async def scraper_worker(query, user_id, user_name, bot):
     try:
         await bot.edit_message_text(
             chat_id=user_id, message_id=status_msg.message_id, 
-            text=f"✅ **স্ক্র্যাপিং সম্পন্ন!**\n🎯 টার্গেট: `{query}`\n📥 নতুন লিড সেভ হয়েছে: **{leads_found}** টি।\n\nফাইল তৈরি করা হচ্ছে...", parse_mode='Markdown'
+            text=f"✅ **Scraping Completed!**\n🎯 Target: `{query}`\n📥 New Leads: **{leads_found}**.\n\nGenerating automatic file...", parse_mode='Markdown'
         )
     except: pass
 
-    # Generating and sending Auto Report CSV with Business URL
     if session_leads:
         si = io.StringIO()
         cw = csv.writer(si)
-        cw.writerow(['Business Name', 'Rating', 'Total Reviews', '5-Star', '4-Star', '3-Star', '2-Star', '1-Star', 'Phone', 'Email', 'Website', 'Business URL', 'Address', 'Query', 'Date'])
+        # 🌟 NEW: Added Google Maps Link column in the output CSV
+        cw.writerow(['Business Name', 'Rating', 'Total Reviews', '5-Star', '4-Star', '3-Star', '2-Star', '1-Star', 'Phone', 'Email', 'Website', 'Address', 'Google Maps Link', 'Query', 'Date'])
         for v in session_leads:
             cw.writerow([
                 v.get('name',''), v.get('rating',''), v.get('total_reviews',''),
                 v.get('stars_5',''), v.get('stars_4',''), v.get('stars_3',''), v.get('stars_2',''), v.get('stars_1',''),
-                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('business_url',''), v.get('address',''), v.get('query',''), v.get('date','')
+                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('address',''), v.get('gmap_link',''), v.get('query',''), v.get('date','')
             ])
         output = io.BytesIO(si.getvalue().encode('utf-8'))
         output.name = f"Report_{query.replace(' ', '_')}_{datetime.now().strftime('%H%M%S')}.csv"
-        await bot.send_document(user_id, output, caption=f"📊 **অটোমেটিক রিপোর্ট:** `{query}`\nএই সেশনে পাওয়া **{leads_found}** টি লিড (লিংক সহ)।")
+        await bot.send_document(user_id, output, caption=f"📊 **Auto Report:** `{query}`\nFound **{leads_found}** new leads in this session.")
 
-    await send_log(bot, user_name, user_id, f"স্ক্র্যাপিং সফলভাবে শেষ করেছে। নতুন লিড: {leads_found}")
+    await send_log(bot, user_name, user_id, f"Scraping completed. New leads: {leads_found}")
 
-# ==========================================
-# --- TELEGRAM BOT MENUS ---
-# ==========================================
+# --- Menus ---
 def get_main_menu(uid):
     user_data = get_user_data(uid)
     lt_leads = user_data.get('lt_leads', 0) if user_data else 0
@@ -390,54 +355,59 @@ def get_main_menu(uid):
     team_added = user_data.get('team_added', 0) if user_data else 0
     role = 'admin' if is_super_admin(uid) else 'user'
     
-    web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
+    web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}"
     
-    keyboard = []
+    keyboard =[]
     
     if is_super_admin(uid):
-        keyboard.append([InlineKeyboardButton("🌐 অ্যাডমিন প্যানেল (Web App)", web_app=WebAppInfo(url=web_url))])
+        keyboard.append([InlineKeyboardButton("🌐 Admin Panel (Web App)", web_app=WebAppInfo(url=web_url))])
     else:
-        keyboard.append([InlineKeyboardButton("🌐 প্রোফাইল ও ড্যাশবোর্ড (Web App)", web_app=WebAppInfo(url=web_url))])
+        keyboard.append([InlineKeyboardButton("🌐 Profile & Dashboard (Web App)", web_app=WebAppInfo(url=web_url))])
     
     hidden_btns = db.reference('bot_settings/hidden_buttons').get() or {}
     
-    # Hide logic toggle check
     if is_super_admin(uid) or not hidden_btns.get('btn_target'):
-        keyboard.append([InlineKeyboardButton("🎯 টার্গেট সেট করুন", callback_data='set_target')])
+        keyboard.append([InlineKeyboardButton("🎯 Set Target (Category)", callback_data='set_target')])
     if is_super_admin(uid) or not hidden_btns.get('btn_scrape'):
-        keyboard.append([InlineKeyboardButton("🚀 শুরু করুন", callback_data='start_scraping'), InlineKeyboardButton("🛑 বন্ধ করুন", callback_data='stop_scraping')])
+        keyboard.append([InlineKeyboardButton("🚀 Start", callback_data='start_scraping'), InlineKeyboardButton("🛑 Stop", callback_data='stop_scraping')])
     if is_super_admin(uid) or not hidden_btns.get('btn_download'):
-        keyboard.append([InlineKeyboardButton("📥 আমার লিড ডাউনলোড", callback_data='download_leads')])
+        keyboard.append([InlineKeyboardButton("📥 Download My Leads", callback_data='download_leads')])
     if is_super_admin(uid) or not hidden_btns.get('btn_clear'):
-        keyboard.append([InlineKeyboardButton("🗑️ প্যানেল ক্লিয়ার করুন", callback_data='soft_delete_leads')])
+        keyboard.append([InlineKeyboardButton("🗑️ Clear Panel", callback_data='soft_delete_leads')])
         
     if team_limit > 0 and (is_super_admin(uid) or not hidden_btns.get('btn_team')):
-        keyboard.append([InlineKeyboardButton("➕ মেম্বার অ্যাড করুন (Team)", callback_data='tl_add_member')])
+        keyboard.append([InlineKeyboardButton("➕ Add Member (Team)", callback_data='tl_add_member')])
 
-    keyboard.append([InlineKeyboardButton("🔄 রিফ্রেশ (Restart)", callback_data='refresh_bot')])
+    keyboard.append([InlineKeyboardButton("🔄 Refresh (Restart)", callback_data='refresh_bot')])
 
     if is_super_admin(uid):
-        keyboard.append([InlineKeyboardButton("👑 সুপার অ্যাডমিন কন্ট্রোল", callback_data='super_admin_panel')])
+        keyboard.append([InlineKeyboardButton("👑 Super Admin Control", callback_data='super_admin_panel')])
     
     return InlineKeyboardMarkup(keyboard)
 
 def get_expired_menu(uid):
     user_data = get_user_data(uid)
-    web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&ends=expired&role=user&bot={BOT_USERNAME}&fb={urllib.parse.quote(FB_URL)}"
-    return InlineKeyboardMarkup([[InlineKeyboardButton("🌐 ওয়েব অ্যাপ (প্যাকেজ ও পেমেন্ট)", web_app=WebAppInfo(url=web_url))]])
+    web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&ends=expired&role=user&bot={BOT_USERNAME}"
+    return InlineKeyboardMarkup([[InlineKeyboardButton("🌐 Web App (Packages & Payment)", web_app=WebAppInfo(url=web_url))]])
 
-# ==========================================
-# --- TELEGRAM BOT HANDLERS ---
-# ==========================================
+async def show_toggle_menu(message_obj, uid):
+    hidden = db.reference('bot_settings/hidden_buttons').get() or {}
+    def get_icon(key): return "❌" if hidden.get(key) else "✅"
+
+    btns = [[InlineKeyboardButton(f"{get_icon('btn_target')} Set Target", callback_data='tgl_btn_target')],[InlineKeyboardButton(f"{get_icon('btn_scrape')} Start/Stop", callback_data='tgl_btn_scrape')],[InlineKeyboardButton(f"{get_icon('btn_download')} Download Leads", callback_data='tgl_btn_download')],[InlineKeyboardButton(f"{get_icon('btn_clear')} Clear Panel", callback_data='tgl_btn_clear')],[InlineKeyboardButton(f"{get_icon('btn_team')} Add Team Member", callback_data='tgl_btn_team')],[InlineKeyboardButton("🔙 Back", callback_data='super_admin_panel')]
+    ]
+    if hasattr(message_obj, 'edit_text'):
+        await message_obj.edit_text("👁️ **Button Hide/Show Control:**\n(❌ = Hidden, ✅ = Visible)", reply_markup=InlineKeyboardMarkup(btns))
+    else:
+        await message_obj.reply_text("👁️ **Button Hide/Show Control:**\n(❌ = Hidden, ✅ = Visible)", reply_markup=InlineKeyboardMarkup(btns))
+
+# --- Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     uname = update.effective_user.first_name
     text = update.message.text.strip() if update.message else ""
     
-    # Every click/action logging
-    await send_log(context.bot, uname, uid, f"Sent start command: {text}")
-
-    # Process signals from WebApp
+    # Handle incoming requests from Deep Linking / WebApp or other commands
     if text == '/start do_scrape':
         req = db.reference(f'pending_requests/{uid}').get()
         if req and req.get('action') == 'scrape':
@@ -446,11 +416,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             is_auth, sub_status = check_subscription(uid)
             if not is_auth:
-                await update.message.reply_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**\n\nওয়েব অ্যাপ থেকে পেমেন্ট করুন।", reply_markup=get_expired_menu(uid))
+                await update.message.reply_text("⚠️ **Your account has expired!**\n\nClick the '🌐 Web App' button to renew.", reply_markup=get_expired_menu(uid))
                 return
                 
             if uid in active_tasks:
-                await update.message.reply_text("⚠️ আপনার একটি কাজ অলরেডি চলছে! রিফ্রেশ বাটনে ক্লিক করে রিসেট করুন।")
+                await update.message.reply_text("⚠️ You already have a running task!")
                 return
             task = asyncio.create_task(scraper_worker(query, uid, uname, context.bot))
             active_tasks[uid] = task
@@ -467,10 +437,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             admin_msg = f"💰 **New Payment Received!**\n\n👤 **User:** {uname} (`{uid}`)\n📦 **Package:** {plan}\n💵 **Amount:** {price}\n📱 **Sender No:** `{sender}`\n🔢 **TrxID:** `{trxid}`\n\n✅ To approve, copy this command and send:\n`/approve_sub {uid} 30`"
             await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown')
-            await update.message.reply_text("✅ আপনার পেমেন্ট রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে। ভেরিফাই করে দ্রুত আপনার অ্যাকাউন্ট আপডেট করা হবে।")
+            await update.message.reply_text("✅ Your payment request has been sent to the admin. Your account will be updated soon.")
         return
 
-    # Reset any ongoing tasks on pure /start
     context.user_data.clear()
     if uid in active_tasks:
         active_tasks[uid].cancel()
@@ -479,15 +448,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_auth, sub_status = check_subscription(uid)
     if not is_auth:
         if sub_status == "not_found": 
-            msg = f"⛔ আপনি অনুমোদিত নন।\n\nআপনার Telegram UID: `{uid}`\n\nঅ্যাডমিনের কাছ থেকে অনুমতি নিতে নিচের বাটনে ক্লিক করুন।"
-            markup = InlineKeyboardMarkup([[InlineKeyboardButton("📩 অ্যাডমিনকে অনুমতি রিকোয়েস্ট পাঠান", callback_data=f'req_access_{uid}')]])
-            await update.message.reply_text(msg, parse_mode='Markdown', reply_markup=markup)
+            # 🌟 NEW: Unauthorized User Request Permission System
+            btn = [[InlineKeyboardButton("📩 এডমিনের কাছে অনুমতি চান", callback_data='request_access')]]
+            await update.message.reply_text(
+                f"⛔ **আপনি অনুমোদিত নন!**\n\n"
+                f"আপনার Telegram UID: `{uid}`\n\n"
+                f"বটটি ব্যবহার করতে এডমিনের অনুমতি প্রয়োজন। নিচের বাটনে ক্লিক করে এডমিনকে রিকোয়েস্ট পাঠান।",
+                reply_markup=InlineKeyboardMarkup(btn),
+                parse_mode='Markdown'
+            )
         elif sub_status == "expired": 
             await update.message.reply_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**\n\nনতুন করে রিনিউ করতে বা প্যাকেজ দেখতে নিচের '🌐 ওয়েব অ্যাপ' বাটনে ক্লিক করুন।", reply_markup=get_expired_menu(uid))
         return
 
-    # Super Admin / Authorized user starts
-    await update.message.reply_text("🗺️ **Google Maps Scraper Dashboard**\n\nআপনার কাজ শুরু করতে নিচের বাটন ব্যবহার করুন:", reply_markup=get_main_menu(uid))
+    await update.message.reply_text("🗺️ **Google Maps Scraper Dashboard**\n\nUse the buttons below to start:", reply_markup=get_main_menu(uid))
 
 async def approve_sub_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
@@ -506,54 +480,60 @@ async def approve_sub_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 current_end = datetime.now()
             new_end = current_end + timedelta(days=days)
             user_ref.update({'sub_ends': new_end.isoformat()})
-            await update.message.reply_text(f"✅ ইউজার `{target_uid}` এর মেয়াদ {days} দিন বাড়ানো/কমানো হয়েছে।")
-            await context.bot.send_message(chat_id=target_uid, text=f"🎉 **অভিনন্দন!**\nআপনার অ্যাকাউন্টের মেয়াদ আপডেট করা হয়েছে।\nএখন আপনি কাজ শুরু করতে পারেন।")
-            await send_log(context.bot, "Super Admin", uid, f"ইউজার {target_uid} এর মেয়াদ পরিবর্তন করেছে ({days} দিন)।")
+            await update.message.reply_text(f"✅ User {target_uid} extended by {days} days.")
+            await context.bot.send_message(chat_id=target_uid, text=f"🎉 **Congratulations!**\nYour payment is verified and your account is extended by {days} days.\nYou can now start working by sending /start.")
         else:
-            await update.message.reply_text("❌ ইউজার পাওয়া যায়নি।")
+            await update.message.reply_text("❌ User not found.")
     except Exception as e:
-        await update.message.reply_text("❌ ব্যবহার: `/approve_sub <user_id> <days_to_add_or_reduce>`")
+        await update.message.reply_text("❌ Usage: `/approve_sub <user_id> <days>`")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     uid = str(update.effective_user.id)
     uname = update.effective_user.first_name
     
-    # Log Every Click!
-    await send_log(context.bot, uname, uid, f"Button Clicked: {query.data}")
-    
-    # Secure query answer wrapper
     try: await query.answer()
-    except Exception as qe: logger.error(f"Query answer error: {qe}")
+    except: pass 
 
-    # Handling Unregistered User Access Request
-    if query.data.startswith('req_access_'):
-        req_uid = query.data.split('req_access_')[1]
-        admin_msg = f"🔔 **New Access Request!**\nUser: {uname} (`{req_uid}`) wants to access the bot.\n\nTo approve 24h trial, copy & send:\n`/admin_cmd add_trial {req_uid} {uname}`"
-        await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown')
-        await query.edit_message_text("✅ আপনার রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে। অপেক্ষা করুন।")
+    # 🌟 NEW: Access Request Logic for Unauthorized Users
+    if query.data == 'request_access':
+        admin_msg = f"🔔 **New Access Request!**\n\n👤 Name: {uname}\n🆔 UID: `{uid}`\n\nThis user is requesting permission to use the bot."
+        approve_btn = [[InlineKeyboardButton("✅ Approve (24h)", callback_data=f'quick_approve_{uid}')]]
+        await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, reply_markup=InlineKeyboardMarkup(approve_btn), parse_mode='Markdown')
+        await query.edit_message_text("✅ আপনার রিকোয়েস্ট এডমিনের কাছে পাঠানো হয়েছে। অনুমতি পেলে আপনাকে জানানো হবে।")
+        return
+        
+    elif query.data.startswith('quick_approve_'):
+        if not is_super_admin(uid): return
+        target_uid = query.data.split('quick_approve_')[1]
+        trial_ends = (datetime.now() + timedelta(days=1)).isoformat() 
+        db.reference(f'bot_users/{target_uid}').set({"name": "User", "sub_ends": trial_ends, "lt_searches": 0, "lt_leads": 0, "team_limit": 0, "team_added": 0})
+        await query.edit_message_text(f"✅ User `{target_uid}` approved for 24h.")
+        try: await context.bot.send_message(chat_id=target_uid, text="🎉 **অভিনন্দন!**\nএডমিন আপনাকে ২৪ ঘণ্টার জন্য বট ব্যবহারের অনুমতি দিয়েছেন।\n\nকমান্ড দিন: /start")
+        except: pass
         return
 
     is_auth, sub_status = check_subscription(uid)
     if not is_auth and query.data not in ['main_menu', 'refresh_bot']:
-        await query.edit_message_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**", reply_markup=get_expired_menu(uid))
+        await query.edit_message_text("⚠️ **Your account has expired!**", reply_markup=get_expired_menu(uid))
         return
 
-    # Refresh Bot
+    # 🌟 EVERY CLICK LOG TO GROUP CHAT
+    await send_log(context.bot, uname, uid, f"Button Clicked: {query.data}")
+
     if query.data == 'refresh_bot':
         if uid in active_tasks:
             active_tasks[uid].cancel()
             del active_tasks[uid]
         context.user_data.clear()
-        await query.edit_message_text("🔄 সবকিছু রিসেট করা হয়েছে। নতুন করে শুরু করুন:", reply_markup=get_main_menu(uid))
+        await query.edit_message_text("🔄 Everything has been reset. Start over:", reply_markup=get_main_menu(uid))
         return
 
-    # Main Menu Return
     if query.data == 'main_menu':
         await query.edit_message_text("🗺️ **Google Maps Scraper Dashboard**", reply_markup=get_main_menu(uid))
         return
 
-    # Target Selection
+    # --- Target Setting ---
     if query.data == 'set_target':
         keyboard = []
         row =[]
@@ -562,27 +542,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if len(row) == 2 or i == len(CATEGORIES) - 1:
                 keyboard.append(row)
                 row =[]
-        keyboard.append([InlineKeyboardButton("✍️ কাস্টম ক্যাটাগরি লিখব", callback_data='cat_custom')])
-        keyboard.append([InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')])
-        await query.edit_message_text("📂 **প্রথমে একটি ক্যাটাগরি সিলেক্ট করুন:**", reply_markup=InlineKeyboardMarkup(keyboard))
-        
-    elif query.data == 'cat_custom':
-        context.user_data['awaiting_custom_cat'] = True
-        await query.message.reply_text("✍️ আপনার কাস্টম ক্যাটাগরি লিখে পাঠান (যেমন: Car Wash):")
+        keyboard.append([InlineKeyboardButton("✍️ Custom Category", callback_data='cat_custom')])
+        keyboard.append([InlineKeyboardButton("🔙 Back", callback_data='main_menu')])
+        await query.edit_message_text("📂 **First select a category:**", reply_markup=InlineKeyboardMarkup(keyboard))
 
+    # 🌟 FIX: THIS WAS THE MISSING CATEGORY BLOCK YOU WERE FRUSTRATED ABOUT
     elif query.data.startswith('cat_'):
         selected_cat = query.data.split('cat_')[1]
-        context.user_data['selected_category'] = selected_cat
-        context.user_data['awaiting_location'] = True
-        await query.edit_message_text(f"✅ ক্যাটাগরি সিলেক্ট হয়েছে: **{selected_cat}**\n\n🌍 **এবার জায়গার নাম লিখে পাঠান:**\n(যেমন: `Dhaka` বা `New York`)", parse_mode='Markdown')
+        if selected_cat == 'custom':
+            context.user_data['awaiting_custom_cat'] = True
+            await query.message.reply_text("✍️ Send your custom category (e.g., Car Wash):")
+        else:
+            context.user_data['selected_category'] = selected_cat
+            context.user_data['awaiting_location'] = True
+            await query.message.reply_text(f"✅ Category: **{selected_cat}**\n🌍 **Now send the Location Name:**", parse_mode='Markdown')
 
     elif query.data == 'start_scraping':
         target = context.user_data.get('target_query')
-        if not target:
-            await query.message.reply_text("⚠️ আগে '🎯 টার্গেট সেট করুন' এ ক্লিক করে ক্যাটাগরি ও লোকেশন দিন।")
+        if not target: 
+            await query.message.reply_text("⚠️ Please set a target first using '🎯 Set Target' button.")
             return
-        if uid in active_tasks:
-            await query.message.reply_text("⚠️ আপনার একটি কাজ অলরেডি চলছে!")
+        if uid in active_tasks: 
+            await query.message.reply_text("⚠️ You already have a task running!")
             return
         task = asyncio.create_task(scraper_worker(target, uid, uname, context.bot))
         active_tasks[uid] = task
@@ -591,7 +572,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if uid in active_tasks:
             active_tasks[uid].cancel()
             del active_tasks[uid]
-            await query.edit_message_text("🛑 স্ক্র্যাপিং বন্ধ করা হয়েছে।", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]]))
+            await query.edit_message_text("🛑 Scraping has been stopped.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data='main_menu')]]))
             
     elif query.data == 'soft_delete_leads':
         leads_ref = db.reference(f'gmaps_leads/{uid}')
@@ -601,60 +582,59 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not val.get('is_deleted_by_user'):
                 leads_ref.child(key).update({'is_deleted_by_user': True})
                 count += 1
-        await query.edit_message_text(f"🗑️ আপনার প্যানেল থেকে **{count}** টি লিড ক্লিয়ার করা হয়েছে। (ডাউনলোডে আর আসবে না)", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]]))
+        await query.edit_message_text(f"🗑️ **{count}** leads cleared from your panel.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data='main_menu')]]))
             
     elif query.data == 'download_leads':
         leads = db.reference(f'gmaps_leads/{uid}').get() or {}
         active_leads = {k: v for k, v in leads.items() if not v.get('is_deleted_by_user')}
         if not active_leads:
-            await query.message.reply_text("⚠️ আপনার ডাউনলোড করার মতো কোনো নতুন লিড নেই।")
+            await query.message.reply_text("⚠️ No new leads available to download.")
             return
             
         si = io.StringIO()
         cw = csv.writer(si)
-        # Added Business URL to final download CSV
-        cw.writerow(['Business Name', 'Rating', 'Total Reviews', '5-Star', '4-Star', '3-Star', '2-Star', '1-Star', 'Phone', 'Email', 'Website', 'Business URL', 'Address', 'Query', 'Date'])
+        # 🌟 NEW: CSV contains 'Google Maps Link' column
+        cw.writerow(['Business Name', 'Rating', 'Total Reviews', '5-Star', '4-Star', '3-Star', '2-Star', '1-Star', 'Phone', 'Email', 'Website', 'Address', 'Google Maps Link', 'Query', 'Date'])
         for key, v in active_leads.items():
             cw.writerow([
                 v.get('name',''), v.get('rating',''), v.get('total_reviews',''),
                 v.get('stars_5',''), v.get('stars_4',''), v.get('stars_3',''), v.get('stars_2',''), v.get('stars_1',''),
-                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('business_url',''), v.get('address',''), v.get('query',''), v.get('date','')
+                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('address',''), v.get('gmap_link',''), v.get('query',''), v.get('date','')
             ])
         output = io.BytesIO(si.getvalue().encode('utf-8'))
         output.name = f"My_Leads_{datetime.now().strftime('%Y%m%d')}.csv"
-        await context.bot.send_document(uid, output, caption=f"✅ আপনার মোট {len(active_leads)} টি লিড (লিংক সহ)।")
+        await context.bot.send_document(uid, output, caption=f"✅ Total {len(active_leads)} leads downloaded.")
 
     elif query.data == 'tl_add_member':
         user_data = get_user_data(uid)
         limit = user_data.get('team_limit', 0)
         added = user_data.get('team_added', 0)
         if added >= limit:
-            await query.edit_message_text("⚠️ আপনার টিম লিমিট শেষ হয়ে গেছে।", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]]))
+            await query.edit_message_text("⚠️ Your team limit is reached.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data='main_menu')]]))
             return
         
         context.user_data['add_user_step'] = 'name'
         context.user_data['add_user_is_tl'] = False
         context.user_data['add_user_parent'] = uid
-        await query.message.reply_text(f"✍️ **নতুন মেম্বারের নাম লিখুন:**\n(আপনার লিমিট বাকি আছে: {limit - added} জন)")
+        await query.message.reply_text(f"✍️ **Enter new member's name:**\n(Remaining limit: {limit - added})")
 
-    # --- SUPER ADMIN PANEL ---
     elif query.data == 'super_admin_panel':
         if not is_super_admin(uid): return
-        btns = [[InlineKeyboardButton("➕ ইউজার অ্যাড (24h Trial)", callback_data='sa_add_user'), InlineKeyboardButton("👥 টিম লিডার অ্যাড", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 ইউজার লিস্ট ও কন্ট্রোল", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ বাটন হাইড/শো করুন", callback_data='sa_toggle_menu')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]
+        btns = [[InlineKeyboardButton("➕ Add User (24h)", callback_data='sa_add_user'), InlineKeyboardButton("👥 Add Team Leader", callback_data='sa_add_tl')],[InlineKeyboardButton("👥 User List & Control", callback_data='sa_view_users')],[InlineKeyboardButton("👁️ Toggle Buttons", callback_data='sa_toggle_menu')],[InlineKeyboardButton("🔙 Back", callback_data='main_menu')]
         ]
-        await query.edit_message_text("👑 **Super Admin Control System**", reply_markup=InlineKeyboardMarkup(btns))
+        await query.edit_message_text("👑 **Super Admin Control**", reply_markup=InlineKeyboardMarkup(btns))
         
     elif query.data == 'sa_add_user':
         if not is_super_admin(uid): return
         context.user_data['add_user_step'] = 'name'
         context.user_data['add_user_is_tl'] = False
-        await query.message.reply_text("✍️ **নতুন ইউজারের নাম লিখুন:**")
+        await query.message.reply_text("✍️ **Enter new user's name:**")
 
     elif query.data == 'sa_add_tl':
         if not is_super_admin(uid): return
         context.user_data['add_user_step'] = 'name'
         context.user_data['add_user_is_tl'] = True
-        await query.message.reply_text("✍️ **টিম লিডারের নাম লিখুন:**")
+        await query.message.reply_text("✍️ **Enter Team Leader's name:**")
 
     elif query.data == 'sa_toggle_menu':
         if not is_super_admin(uid): return
@@ -671,14 +651,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_super_admin(uid): return
         users = db.reference('bot_users').get() or {}
         if not users:
-            await query.edit_message_text("কোনো টিম মেম্বার নেই।", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 ব্যাক", callback_data='super_admin_panel')]]))
+            await query.edit_message_text("No users found.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data='super_admin_panel')]]))
             return
         
         keyboard =[]
         for u_id, u_data in users.items():
             keyboard.append([InlineKeyboardButton(f"👤 {u_data.get('name')} ({u_id})", callback_data=f'sa_usr_{u_id}')])
-        keyboard.append([InlineKeyboardButton("🔙 ব্যাক", callback_data='super_admin_panel')])
-        await query.edit_message_text("যেকোনো ইউজারের প্রোফাইল দেখতে নামের ওপর ক্লিক করুন:", reply_markup=InlineKeyboardMarkup(keyboard))
+        keyboard.append([InlineKeyboardButton("🔙 Back", callback_data='super_admin_panel')])
+        await query.edit_message_text("Click a name to view user profile:", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif query.data.startswith('sa_usr_'):
         if not is_super_admin(uid): return
@@ -697,18 +677,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status = "Unknown"
 
         profile_text = (
-            f"👤 **ইউজার প্রোফাইল:** {user_data.get('name')}\n"
+            f"👤 **User Profile:** {user_data.get('name')}\n"
             f"🆔 **ID:** `{target_uid}`\n"
-            f"📊 **স্ট্যাটাস:** {status}\n"
-            f"⏳ **মেয়াদ শেষ:** {sub_end_formatted}\n"
-            f"👥 **টিম লিমিট:** {user_data.get('team_added',0)} / {user_data.get('team_limit',0)}\n\n"
-            f"🔍 **লাইফটাইম সার্চ:** {user_data.get('lt_searches', 0)}\n"
-            f"📥 **লাইফটাইম লিড:** {user_data.get('lt_leads', 0)}\n"
-            f"📂 **ডাটাবেসে থাকা লিড:** {len(leads)}"
+            f"📊 **Status:** {status}\n"
+            f"⏳ **Expiry:** {sub_end_formatted}\n"
+            f"👥 **Team Limit:** {user_data.get('team_added',0)} / {user_data.get('team_limit',0)}\n\n"
+            f"🔍 **Lifetime Searches:** {user_data.get('lt_searches', 0)}\n"
+            f"📥 **Lifetime Leads:** {user_data.get('lt_leads', 0)}\n"
+            f"📂 **Leads in Database:** {len(leads)}"
         )
 
-        btns = [[InlineKeyboardButton("⏳ মেয়াদ কমান/বাড়ান (+/- দিন)", callback_data=f'sa_add_days_{target_uid}')],[InlineKeyboardButton("🗑️ হার্ড ডিলিট (সব লিড মুছুন)", callback_data=f'hard_del_{target_uid}')],[InlineKeyboardButton("❌ ইউজার রিমুভ", callback_data=f'rm_usr_{target_uid}')],
-            [InlineKeyboardButton("🔙 ব্যাক", callback_data='sa_view_users')]
+        btns = [[InlineKeyboardButton("⏳ Edit Time (+/- Days)", callback_data=f'sa_add_days_{target_uid}')],[InlineKeyboardButton("🗑️ Hard Delete Leads", callback_data=f'hard_del_{target_uid}')],[InlineKeyboardButton("❌ Remove User", callback_data=f'rm_usr_{target_uid}')],[InlineKeyboardButton("🔙 Back", callback_data='sa_view_users')]
         ]
         await query.edit_message_text(profile_text, reply_markup=InlineKeyboardMarkup(btns), parse_mode='Markdown')
 
@@ -716,53 +695,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not is_super_admin(uid): return
         target_uid = query.data.split('sa_add_days_')[1]
         context.user_data['awaiting_days_for'] = target_uid
-        await query.message.reply_text("✍️ **কত দিন মেয়াদ বাড়াতে বা কমাতে চান?**\n(বাড়াতে লিখুন: `30`, কমাতে লিখুন: `-10`):")
+        await query.message.reply_text("✍️ **How many days to add/remove?**\n(E.g., 30 to add, -10 to remove):")
 
     elif query.data.startswith('hard_del_'):
         if not is_super_admin(uid): return
         target_uid = query.data.split('hard_del_')[1]
         db.reference(f'gmaps_leads/{target_uid}').delete()
-        await query.edit_message_text(f"✅ ইউজার `{target_uid}` এর সব লিড ডাটাবেস থেকে চিরতরে ডিলিট করা হয়েছে।", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 ব্যাক", callback_data=f'sa_usr_{target_uid}')]]))
+        await query.edit_message_text(f"✅ All leads of user `{target_uid}` permanently deleted.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data=f'sa_usr_{target_uid}')]]))
 
     elif query.data.startswith('rm_usr_'):
         if not is_super_admin(uid): return
         target_uid = query.data.split('rm_usr_')[1]
         db.reference(f'bot_users/{target_uid}').delete()
         db.reference(f'gmaps_leads/{target_uid}').delete() 
-        await query.edit_message_text(f"✅ ইউজার `{target_uid}` কে সফলভাবে রিমুভ করা হয়েছে।", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 ব্যাক", callback_data='sa_view_users')]]))
-
-async def show_toggle_menu(message_obj, uid):
-    hidden = db.reference('bot_settings/hidden_buttons').get() or {}
-    def get_icon(key): return "❌" if hidden.get(key) else "✅"
-
-    btns = [[InlineKeyboardButton(f"{get_icon('btn_target')} টার্গেট সেট", callback_data='tgl_btn_target')],[InlineKeyboardButton(f"{get_icon('btn_scrape')} শুরু/বন্ধ করুন", callback_data='tgl_btn_scrape')],[InlineKeyboardButton(f"{get_icon('btn_download')} লিড ডাউনলোড", callback_data='tgl_btn_download')],[InlineKeyboardButton(f"{get_icon('btn_clear')} প্যানেল ক্লিয়ার", callback_data='tgl_btn_clear')],[InlineKeyboardButton(f"{get_icon('btn_team')} টিম মেম্বার অ্যাড", callback_data='tgl_btn_team')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='super_admin_panel')]
-    ]
-    if hasattr(message_obj, 'edit_text'):
-        await message_obj.edit_text("👁️ **বাটন হাইড/শো কন্ট্রোল:**\n(❌ মানে হাইড, ✅ মানে শো)", reply_markup=InlineKeyboardMarkup(btns))
-    else:
-        await message_obj.reply_text("👁️ **বাটন হাইড/শো কন্ট্রোল:**\n(❌ মানে হাইড, ✅ মানে শো)", reply_markup=InlineKeyboardMarkup(btns))
+        await query.edit_message_text(f"✅ User `{target_uid}` removed successfully.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data='sa_view_users')]]))
 
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     text = update.message.text.strip()
     
-    # Process Manual Admin Command for Approving Requests via Webhook Button
-    if text.startswith('/admin_cmd add_trial'):
-        if is_super_admin(uid):
-            parts = text.split(maxsplit=3)
-            if len(parts) >= 3:
-                new_id = parts[2]
-                name = parts[3] if len(parts) > 3 else "Requested User"
-                trial_ends = (datetime.now() + timedelta(days=1)).isoformat() 
-                db.reference(f'bot_users/{new_id}').set({"name": name, "sub_ends": trial_ends, "lt_searches": 0, "lt_leads": 0, "team_limit": 0, "team_added": 0})
-                await update.message.reply_text(f"✅ User `{new_id}` ({name}) added with 24h trial.")
-                await context.bot.send_message(chat_id=new_id, text="🎉 **Congratulation!**\nAdmin has approved your request for a 24h trial. Type /start to begin.")
-        return
-
     if context.user_data.get('add_user_step') == 'name':
         context.user_data['add_user_name'] = text
         context.user_data['add_user_step'] = 'uid'
-        await update.message.reply_text("✍️ **এবার ইউজারের টেলিগ্রাম ID (UID) দিন:**")
+        await update.message.reply_text("✍️ **Now enter User Telegram ID (UID):**")
         return
         
     elif context.user_data.get('add_user_step') == 'uid':
@@ -774,7 +729,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_tl:
             context.user_data['add_user_uid'] = uid_input
             context.user_data['add_user_step'] = 'limit'
-            await update.message.reply_text("✍️ **এবার টিম মেম্বার লিমিট (সংখ্যা) দিন:**")
+            await update.message.reply_text("✍️ **Now enter Team Member Limit (Number):**")
             return
         elif parent_id:
             user_data = get_user_data(parent_id)
@@ -782,13 +737,13 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             added = user_data.get('team_added', 0)
             db.reference(f'bot_users/{uid_input}').set({"name": name, "sub_ends": sub_ends, "lt_searches": 0, "lt_leads": 0, "parent_id": parent_id})
             db.reference(f'bot_users/{parent_id}').update({"team_added": added + 1})
-            await update.message.reply_text(f"✅ টিম মেম্বার `{uid_input}` ({name}) যুক্ত হয়েছে।")
+            await update.message.reply_text(f"✅ Team member `{uid_input}` ({name}) added.")
             context.user_data.clear()
             return
         else:
             trial_ends = (datetime.now() + timedelta(days=1)).isoformat() 
             db.reference(f'bot_users/{uid_input}').set({"name": name, "sub_ends": trial_ends, "lt_searches": 0, "lt_leads": 0, "team_limit": 0, "team_added": 0})
-            await update.message.reply_text(f"✅ ইউজার `{uid_input}` ({name}) ২৪ ঘণ্টার ট্রায়ালসহ যুক্ত হয়েছে।")
+            await update.message.reply_text(f"✅ User `{uid_input}` ({name}) added with 24h trial.")
             context.user_data.clear()
             return
             
@@ -799,10 +754,10 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             name = context.user_data['add_user_name']
             trial_ends = (datetime.now() + timedelta(days=30)).isoformat() 
             db.reference(f'bot_users/{uid_input}').set({"name": name, "sub_ends": trial_ends, "lt_searches": 0, "lt_leads": 0, "team_limit": limit, "team_added": 0})
-            await update.message.reply_text(f"✅ টিম লিডার `{uid_input}` ({name}) যুক্ত হয়েছে। লিমিট: {limit} জন।")
+            await update.message.reply_text(f"✅ Team Leader `{uid_input}` ({name}) added. Limit: {limit}.")
             context.user_data.clear()
         except ValueError:
-            await update.message.reply_text("❌ দয়া করে শুধু সংখ্যা লিখুন।")
+            await update.message.reply_text("❌ Please enter numbers only.")
         return
 
     if context.user_data.get('awaiting_days_for') and is_super_admin(uid):
@@ -821,11 +776,11 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 new_end = current_end + timedelta(days=days_to_add)
                 user_ref.update({'sub_ends': new_end.isoformat()})
-                await update.message.reply_text(f"✅ ইউজার `{target_uid}` এর মেয়াদ আপডেট করা হয়েছে। নতুন মেয়াদ: {new_end.strftime('%Y-%m-%d')}")
+                await update.message.reply_text(f"✅ User `{target_uid}` expiry updated. New date: {new_end.strftime('%Y-%m-%d')}")
             else:
-                await update.message.reply_text("❌ ইউজার খুঁজে পাওয়া যায়নি।")
+                await update.message.reply_text("❌ User not found.")
         except ValueError:
-            await update.message.reply_text("❌ দয়া করে শুধু সংখ্যা লিখুন (যেমন: 30 বা -10)।")
+            await update.message.reply_text("❌ Please enter numbers only (e.g., 30 or -10).")
         context.user_data['awaiting_days_for'] = None
         return
 
@@ -836,7 +791,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['selected_category'] = text
         context.user_data['awaiting_custom_cat'] = False
         context.user_data['awaiting_location'] = True
-        await update.message.reply_text(f"✅ ক্যাটাগরি: **{text}**\n🌍 **এবার জায়গার নাম লিখে পাঠান:**\n(যেমন: `Dhaka` বা `New York`)", parse_mode='Markdown')
+        await update.message.reply_text(f"✅ Category: **{text}**\n🌍 **Now send the Location Name:**")
         return
 
     if context.user_data.get('awaiting_location'):
@@ -845,90 +800,31 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['target_query'] = f"{category} in {location}"
         context.user_data['awaiting_location'] = False
         
-        keyboard = [[InlineKeyboardButton("🚀 স্ক্র্যাপিং শুরু করুন", callback_data='start_scraping')],[InlineKeyboardButton("🔙 ব্যাক", callback_data='main_menu')]]
-        await update.message.reply_text(f"✅ **টার্গেট:** `{context.user_data['target_query']}`\nএখন শুরু করতে পারেন।", reply_markup=InlineKeyboardMarkup(keyboard))
+        keyboard = [[InlineKeyboardButton("🚀 Start Scraping", callback_data='start_scraping')],[InlineKeyboardButton("🔙 Back", callback_data='main_menu')]]
+        await update.message.reply_text(f"✅ **Target:** `{context.user_data['target_query']}`\nYou can start now.", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
-# ==========================================
-# --- WEB SERVER & API ENDPOINTS (For HTML Web App Integration) ---
-# ==========================================
-async def serve_index(request):
-    """Directly serves the index.html file to prevent hosting headaches."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(base_dir, 'templates', 'index.html')
+# --- Custom Backend API for Web App Configuration ---
+async def api_get_settings(request):
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return web.Response(text=content, content_type='text/html')
+        settings = db.reference('web_settings').get() or {}
+        return web.json_response({"status": "success", "data": settings})
     except Exception as e:
-        logger.error(f"HTML load error: {e}")
-        return web.Response(text=f"<h1>Error loading HTML</h1><p>Missing <b>templates/index.html</b></p>", status=404, content_type='text/html')
+        return web.json_response({"status": "error", "message": str(e)})
 
-async def api_scrape(request):
-    """Handles deep-linkless scraping request from Web App"""
+async def api_update_settings(request):
     try:
         data = await request.json()
         uid = str(data.get('uid'))
-        uname = data.get('uname', 'User')
-        query = data.get('query')
-        bot = request.app['bot_instance']
+        if not is_super_admin(uid):
+            return web.json_response({"status": "error", "message": "Unauthorized"})
         
-        is_auth, sub_status = check_subscription(uid)
-        if not is_auth: return web.json_response({"status": "error", "message": "Expired"})
-            
-        if uid in active_tasks: return web.json_response({"status": "error", "message": "Running"})
-            
-        task = asyncio.create_task(scraper_worker(query, uid, uname, bot))
-        active_tasks[uid] = task
+        settings_data = data.get('settings', {})
+        db.reference('web_settings').update(settings_data)
         return web.json_response({"status": "success"})
     except Exception as e:
-        return web.json_response({"status": "error"})
+        return web.json_response({"status": "error", "message": str(e)})
 
-async def api_payment(request):
-    """Handles Payment Form submission straight from Web App to Admin Bot DMs"""
-    try:
-        data = await request.json()
-        uid = str(data.get('uid'))
-        uname = data.get('uname', 'User')
-        plan = data.get('plan', '')
-        price = data.get('price', '')
-        sender = data.get('sender', '')
-        trxid = data.get('trxid', '')
-        bot = request.app['bot_instance']
-        
-        admin_msg = f"💰 **New Payment Received!**\n\n👤 **User:** {uname} (`{uid}`)\n📦 **Package:** {plan}\n💵 **Amount:** {price}\n📱 **Sender:** `{sender}`\n🔢 **TrxID:** `{trxid}`\n\n✅ To approve, send:\n`/approve_sub {uid} 30`"
-        await bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown')
-        await bot.send_message(chat_id=uid, text="✅ Your payment request has been sent to the admin. Your account will be updated soon.")
-        return web.json_response({"status": "success"})
-    except Exception as e:
-        return web.json_response({"status": "error"})
-
-async def api_admin_cmd(request):
-    """Extended Web App API allowing Admin to Update User Packages and perform actions securely."""
-    try:
-        data = await request.json()
-        uid = str(data.get('uid'))
-        cmd = data.get('cmd')
-        bot = request.app['bot_instance']
-
-        if not is_super_admin(uid): return web.json_response({"status": "unauthorized"})
-
-        if cmd == 'save_packages':
-            # This logic captures the web apps save command
-            pkg_data = data.get('pkg_data')
-            db.reference('web_settings/packages').set(pkg_data)
-            await bot.send_message(chat_id=uid, text="✅ Packages updated via Web App.")
-        
-        # Triggering Bot Actions via API
-        elif cmd in['add_user', 'add_team_leader', 'manage_users', 'toggle_bot_buttons']:
-            await bot.send_message(chat_id=uid, text=f"Action Triggered: Open bot chat to process: /{cmd}")
-            
-        return web.json_response({"status": "success"})
-    except Exception as e:
-        return web.json_response({"status": "error"})
-
-# ==========================================
-# --- BOT & AIOHTTP ASYNC LAUNCHER ---
-# ==========================================
+# --- Application Startup ---
 async def main_async():
     app = Application.builder().token(TOKEN).build()
     
@@ -941,7 +837,7 @@ async def main_async():
     except Exception as e:
         logger.error(f"Error fetching bot info: {e}")
 
-    asyncio.create_task(keep_alive_task())
+    asyncio.create_task(keep_alive_task(None))
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("approve_sub", approve_sub_cmd))
@@ -952,31 +848,41 @@ async def main_async():
         webhook_path = f"/{TOKEN[-10:]}"
         await app.bot.set_webhook(url=f"{RENDER_URL}{webhook_path}")
         
-        # Merge Telegram and Web App onto one solid Aiohttp runner
         async def telegram_webhook(request):
             data = await request.json()
             await app.update_queue.put(Update.de_json(data=data, bot=app.bot))
             return web.Response()
 
+        # HTML serving logic would go here normally, but since user requested GitHub Pages 
+        # structure, we omit serving the index.html from Python to let Github handle frontend.
+        # But we keep the APIs active so Github HTML can fetch them.
+
         web_app = web.Application()
+        import aiohttp_cors
+        cors = aiohttp_cors.setup(web_app, defaults={
+            "*": aiohttp_cors.ResourceOptions(
+                allow_credentials=True, expose_headers="*", allow_headers="*"
+            )
+        })
+        
         web_app['bot_instance'] = app.bot 
         
+        # Route definitions
         web_app.router.add_post(webhook_path, telegram_webhook)
-        web_app.router.add_get("/", serve_index)
-        web_app.router.add_post("/api/scrape", api_scrape) 
-        web_app.router.add_post("/api/payment", api_payment)
-        web_app.router.add_post("/api/admin", api_admin_cmd)
+        # Add API routes for WebApp to communicate
+        cors.add(web_app.router.add_get("/api/get_settings", api_get_settings))
+        cors.add(web_app.router.add_post("/api/update_settings", api_update_settings))
         
         runner = web.AppRunner(web_app)
         await runner.setup()
         site = web.TCPSite(runner, "0.0.0.0", PORT)
         await site.start()
         
-        logger.info(f"🌐 Unified Server routing Telegram+Web via Port {PORT}")
+        logger.info(f"🌐 Backend APIs running on port {PORT}")
         await app.start()
         await asyncio.Event().wait()
     else:
-        logger.info("🤖 Polling mode...")
+        logger.info("🤖 Bot running on polling mode...")
         app.run_polling()
 
 def main():
