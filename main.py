@@ -39,14 +39,20 @@ FB_URL = os.environ.get('FIREBASE_DATABASE_URL')
 RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
 PORT = int(os.environ.get('PORT', '8080'))
 
-# Clean Web App URL (Removes trailing slashes and index.html if user added by mistake)
-raw_web_url = os.environ.get('WEB_APP_URL', RENDER_URL if RENDER_URL else "http://localhost:8080")
-WEB_APP_URL = raw_web_url.split('/index.html')[0].rstrip('/')
+# WEB_APP_URL - Safe trailing slash handling
+WEB_APP_URL = RENDER_URL.rstrip('/') if RENDER_URL else f"http://localhost:{PORT}"
 
 # --- Global State ---
 active_tasks = {} 
 recent_logs =[] 
 BOT_USERNAME = "" 
+
+# CORS Headers 
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
 
 CATEGORIES =[
     "Restaurants", "IT Companies", "Hospitals", "Real Estate", 
@@ -54,12 +60,6 @@ CATEGORIES =[
     "Lawyers", "Electricians", "Salons", "Pharmacies", "Supermarkets",
     "Travel Agencies", "Banks", "Mechanics", "Schools", "Architects"
 ]
-
-CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
-    "Access-Control-Allow-Headers": "Content-Type",
-}
 
 # --- Firebase Initialization ---
 try:
@@ -111,7 +111,7 @@ async def post_init(app: Application):
     BOT_USERNAME = bot_info.username
     logger.info(f"🤖 Bot Username: @{BOT_USERNAME}")
 
-async def keep_alive_task():
+async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE=None):
     if not RENDER_URL: return
     while True:
         try: requests.get(RENDER_URL, timeout=10)
@@ -150,7 +150,7 @@ async def send_log(bot, user_name, user_id, action):
         except: pass
 
     recent_logs.append(log_text)
-    if "এরর" in action or "Error" in action or "Executable doesn't exist" in action: 
+    if "এরর" in action or "Error" in action or "Executable doesn't exist" in action or "❌" in action: 
         asyncio.create_task(analyze_with_ai(bot, is_error=True))
     elif len(recent_logs) >= 15: 
         asyncio.create_task(analyze_with_ai(bot, is_error=False))
@@ -302,7 +302,8 @@ async def scraper_worker(query, user_id, user_name, bot):
                         'name': name, 'rating': rating, 'total_reviews': total_reviews,
                         'stars_5': r5, 'stars_4': r4, 'stars_3': r3, 'stars_2': r2, 'stars_1': r1,
                         'phone': phone, 'email': email, 'website': website, 'address': address,
-                        'gmaps_url': url, 'query': query, 'date': datetime.now().isoformat(), 'is_deleted_by_user': False 
+                        'gmaps_url': url, 
+                        'query': query, 'date': datetime.now().isoformat(), 'is_deleted_by_user': False 
                     }
                     ref.child(safe_key).set(lead_data)
                     session_leads.append(lead_data) 
@@ -312,8 +313,8 @@ async def scraper_worker(query, user_id, user_name, bot):
             await browser.close()
             
     except Exception as e:
-        await send_log(bot, user_name, user_id, f"❌ স্ক্র্যাপিং এরর: {str(e)[:100]}")
-        try: await bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"❌ স্ক্র্যাপিং এরর।")
+        await send_log(bot, user_name, user_id, f"❌ Error: {str(e)[:100]}")
+        try: await bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"❌ Scraping error. Please try again.")
         except: pass
         if user_id in active_tasks: del active_tasks[user_id]
         return
@@ -328,7 +329,7 @@ async def scraper_worker(query, user_id, user_name, bot):
     try:
         await bot.edit_message_text(
             chat_id=user_id, message_id=status_msg.message_id, 
-            text=f"✅ **স্ক্র্যাপিং সম্পন্ন!**\n🎯 টার্গেট: `{query}`\n📥 নতুন লিড: **{leads_found}** টি।\n\nঅটোমেটিক ফাইল তৈরি করা হচ্ছে...", parse_mode='Markdown'
+            text=f"✅ **Scraping Completed!**\n🎯 Target: `{query}`\n📥 New Leads: **{leads_found}**.\n\nGenerating automatic file...", parse_mode='Markdown'
         )
     except: pass
 
@@ -340,13 +341,13 @@ async def scraper_worker(query, user_id, user_name, bot):
             cw.writerow([
                 v.get('name',''), v.get('rating',''), v.get('total_reviews',''),
                 v.get('stars_5',''), v.get('stars_4',''), v.get('stars_3',''), v.get('stars_2',''), v.get('stars_1',''),
-                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('address',''), v.get('gmaps_url',''), v.get('query',''), v.get('date','')
+                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('address',''), v.get('gmaps_url', ''), v.get('query',''), v.get('date','')
             ])
         output = io.BytesIO(si.getvalue().encode('utf-8'))
         output.name = f"Report_{query.replace(' ', '_')}_{datetime.now().strftime('%H%M%S')}.csv"
-        await bot.send_document(user_id, output, caption=f"📊 **অটোমেটিক রিপোর্ট:** `{query}`\nএই সেশনে পাওয়া **{leads_found}** টি নতুন লিড।")
+        await bot.send_document(user_id, output, caption=f"📊 **Auto Report:** `{query}`\nFound **{leads_found}** new leads in this session.")
 
-    await send_log(bot, user_name, user_id, f"স্ক্র্যাপিং শেষ। নতুন লিড: {leads_found}")
+    await send_log(bot, user_name, user_id, f"Scraping completed. New leads: {leads_found}")
 
 # --- Menus ---
 def get_main_menu(uid):
@@ -358,6 +359,7 @@ def get_main_menu(uid):
     team_added = user_data.get('team_added', 0) if user_data else 0
     role = 'admin' if is_super_admin(uid) else 'user'
     
+    # Ensuring Web App URL is correctly formatted
     web_url = f"{WEB_APP_URL}/?uid={uid}&name={urllib.parse.quote(user_data.get('name', 'User') if user_data else 'User')}&leads={lt_leads}&searches={lt_searches}&ends={sub_ends}&role={role}&team_limit={team_limit}&team_added={team_added}&bot={BOT_USERNAME}"
     
     keyboard =[]
@@ -410,62 +412,68 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uname = update.effective_user.first_name
     text = update.message.text.strip() if update.message else ""
     
-    # Handle WebApp Webhook/Start Payload Commands (Deep Linking fix for Admin cmds)
-    if text == '/start do_scrape':
-        req = db.reference(f'pending_requests/{uid}').get()
-        if req and req.get('action') == 'scrape':
-            query = req.get('query')
-            db.reference(f'pending_requests/{uid}').delete() 
-            is_auth, sub_status = check_subscription(uid)
-            if not is_auth:
-                await update.message.reply_text("⚠️ **Your account has expired!**\n\nClick the '🌐 Web App' button to renew.", reply_markup=get_expired_menu(uid))
-                return
-            if uid in active_tasks:
-                await update.message.reply_text("⚠️ You already have a running task!")
-                return
-            task = asyncio.create_task(scraper_worker(query, uid, uname, context.bot))
-            active_tasks[uid] = task
-        return
+    # 🌟 100% BULLETPROOF DEEP LINKING (ALL BUTTONS NOW WORK)
+    if text.startswith('/start '):
+        payload = text.replace('/start ', '').strip()
 
-    elif text == '/start do_payment':
-        req = db.reference(f'pending_requests/{uid}').get()
-        if req and req.get('action') == 'payment':
-            plan = req.get('plan', '')
-            price = req.get('price', '')
-            sender = req.get('sender', '')
-            trxid = req.get('trxid', '')
-            db.reference(f'pending_requests/{uid}').delete() 
-            admin_msg = f"💰 **New Payment Received!**\n\n👤 **User:** {uname} (`{uid}`)\n📦 **Package:** {plan}\n💵 **Amount:** {price}\n📱 **Sender No:** `{sender}`\n🔢 **TrxID:** `{trxid}`\n\n✅ To approve, copy this command and send:\n`/approve_sub {uid} 30`"
-            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown')
-            await update.message.reply_text("✅ Your payment request has been sent to the admin. Your account will be updated soon.")
-        return
-        
-    elif text.startswith('/start admin_cmd_'):
-        cmd = text.split('admin_cmd_')[1]
-        if not is_super_admin(uid): return
-        
-        if cmd == 'add_user':
-            context.user_data['add_user_step'] = 'name'
-            context.user_data['add_user_is_tl'] = False
-            await update.message.reply_text("✍️ **Enter new user's name:**")
-            return
-        elif cmd == 'add_team_leader':
-            context.user_data['add_user_step'] = 'name'
-            context.user_data['add_user_is_tl'] = True
-            await update.message.reply_text("✍️ **Enter Team Leader's name:**")
-            return
-        elif cmd == 'manage_users':
-            users = db.reference('bot_users').get() or {}
-            keyboard = [[InlineKeyboardButton(f"👤 {u_data.get('name')} ({u_id})", callback_data=f'sa_usr_{u_id}')] for u_id, u_data in users.items()]
-            await update.message.reply_text("Click a name to view user profile:", reply_markup=InlineKeyboardMarkup(keyboard))
-            return
-        elif cmd == 'edit_packages':
-            await update.message.reply_text("ℹ️ Please open the **Web App** (Super Admin Panel) and click **'Edit Packages & Pricing'** to update this data live.")
-            return
-        elif cmd == 'toggle_bot_buttons':
-            await show_toggle_menu(update.message, uid)
+        if payload == 'do_scrape':
+            req = db.reference(f'pending_requests/{uid}').get()
+            if req and req.get('action') == 'scrape':
+                query = req.get('query')
+                db.reference(f'pending_requests/{uid}').delete() 
+                
+                is_auth, sub_status = check_subscription(uid)
+                if not is_auth:
+                    await update.message.reply_text("⚠️ **Your account has expired!**\n\nClick the '🌐 Web App' button to renew.", reply_markup=get_expired_menu(uid))
+                    return
+                    
+                if uid in active_tasks:
+                    await update.message.reply_text("⚠️ You already have a running task!")
+                    return
+                task = asyncio.create_task(scraper_worker(query, uid, uname, context.bot))
+                active_tasks[uid] = task
             return
 
+        elif payload == 'do_payment':
+            req = db.reference(f'pending_requests/{uid}').get()
+            if req and req.get('action') == 'payment':
+                plan = req.get('plan', '')
+                price = req.get('price', '')
+                sender = req.get('sender', '')
+                trxid = req.get('trxid', '')
+                db.reference(f'pending_requests/{uid}').delete() 
+                
+                admin_msg = f"💰 **New Payment Received!**\n\n👤 **User:** {uname} (`{uid}`)\n📦 **Package:** {plan}\n💵 **Amount:** {price}\n📱 **Sender No:** `{sender}`\n🔢 **TrxID:** `{trxid}`\n\n✅ To approve, copy this command and send:\n`/approve_sub {uid} 30`"
+                await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown')
+                await update.message.reply_text("✅ Your payment request has been sent to the admin. Your account will be updated soon.")
+            return
+
+        # Handle Web App Admin Commands
+        elif payload.startswith('admin_cmd_') and is_super_admin(uid):
+            cmd = payload.replace('admin_cmd_', '')
+            if cmd == 'add_user':
+                context.user_data['add_user_step'] = 'name'
+                context.user_data['add_user_is_tl'] = False
+                await update.message.reply_text("✍️ **Enter new user's name:**")
+            elif cmd == 'add_team_leader':
+                context.user_data['add_user_step'] = 'name'
+                context.user_data['add_user_is_tl'] = True
+                await update.message.reply_text("✍️ **Enter Team Leader's name:**")
+            elif cmd == 'manage_users':
+                users = db.reference('bot_users').get() or {}
+                if not users:
+                    await update.message.reply_text("No users found.")
+                    return
+                keyboard =[[InlineKeyboardButton(f"👤 {u_data.get('name')} ({u_id})", callback_data=f'sa_usr_{u_id}')] for u_id, u_data in users.items()]
+                await update.message.reply_text("Click a name to view user profile:", reply_markup=InlineKeyboardMarkup(keyboard))
+            elif cmd == 'edit_packages':
+                context.user_data['awaiting_package_text'] = True
+                await update.message.reply_text("✍️ **Send your package text, prices, and payment numbers:**")
+            elif cmd == 'toggle_bot_buttons':
+                await show_toggle_menu(update.message, uid)
+            return
+
+    # Normal /start behavior
     context.user_data.clear()
     if uid in active_tasks:
         active_tasks[uid].cancel()
@@ -474,7 +482,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_auth, sub_status = check_subscription(uid)
     if not is_auth:
         if sub_status == "not_found": 
-            await update.message.reply_text("⛔ You are not authorized. Contact Admin.")
+            btn = [[InlineKeyboardButton("📩 Request Access", callback_data='req_access')]]
+            await update.message.reply_text(f"⛔ You are not authorized.\n\nYour UID: `{uid}`\nClick the button below to request access from the admin.", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(btn))
         elif sub_status == "expired": 
             await update.message.reply_text("⚠️ **Your account has expired!**\n\nClick the '🌐 Web App' button to renew.", reply_markup=get_expired_menu(uid))
         return
@@ -513,6 +522,24 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try: await query.answer()
     except: pass 
     
+    await send_log(context.bot, uname, uid, f"Button Click: {query.data}")
+
+    if query.data == 'req_access':
+        admin_msg = f"🔔 **New Access Request!**\n\n👤 **Name:** {uname}\n🆔 **UID:** `{uid}`\n\n✅ Click to approve:"
+        btn = [[InlineKeyboardButton("✅ Give 24h Trial", callback_data=f'sa_add_trial_{uid}')]]
+        await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(btn))
+        await query.edit_message_text("✅ Your request has been sent to the admin. Please wait.")
+        return
+        
+    elif query.data.startswith('sa_add_trial_'):
+        if not is_super_admin(uid): return
+        target_uid = query.data.split('sa_add_trial_')[1]
+        trial_ends = (datetime.now() + timedelta(days=1)).isoformat()
+        db.reference(f'bot_users/{target_uid}').set({"name": "User", "sub_ends": trial_ends, "lt_searches": 0, "lt_leads": 0, "team_limit": 0, "team_added": 0})
+        await query.edit_message_text(f"✅ User `{target_uid}` granted 24h trial.")
+        await context.bot.send_message(chat_id=target_uid, text="🎉 Admin approved your request! Send /start to begin.")
+        return
+
     is_auth, sub_status = check_subscription(uid)
     if not is_auth and query.data not in ['main_menu', 'refresh_bot']:
         await query.edit_message_text("⚠️ **Your account has expired!**", reply_markup=get_expired_menu(uid))
@@ -545,11 +572,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == 'cat_custom':
         context.user_data['awaiting_custom_cat'] = True
         await query.message.reply_text("✍️ Send your custom category (e.g., Car Wash):")
+        
+    elif query.data.startswith('cat_'):
+        selected_cat = query.data.split('cat_')[1]
+        context.user_data['selected_category'] = selected_cat
+        context.user_data['awaiting_location'] = True
+        await query.message.reply_text(f"✅ Category: **{selected_cat}**\n🌍 **Now send the Location Name:**")
 
     elif query.data == 'start_scraping':
         target = context.user_data.get('target_query')
-        if not target: return
-        if uid in active_tasks: return
+        if not target: 
+            await query.message.reply_text("⚠️ Set target first!")
+            return
+        if uid in active_tasks: 
+            await query.message.reply_text("⚠️ You already have a running task!")
+            return
         task = asyncio.create_task(scraper_worker(target, uid, uname, context.bot))
         active_tasks[uid] = task
         
@@ -784,31 +821,32 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['target_query'] = f"{category} in {location}"
         context.user_data['awaiting_location'] = False
         
-        keyboard = [[InlineKeyboardButton("🚀 Start Scraping", callback_data='start_scraping')],[InlineKeyboardButton("🔙 Back", callback_data='main_menu')]]
+        keyboard = [[InlineKeyboardButton("🚀 Start", callback_data='start_scraping')],[InlineKeyboardButton("🔙 Back", callback_data='main_menu')]]
         await update.message.reply_text(f"✅ **Target:** `{context.user_data['target_query']}`\nYou can start now.", reply_markup=InlineKeyboardMarkup(keyboard))
 
-# --- API ROUTES (Serves HTML and avoids deep link crash) ---
+# --- SERVER FOR HTML ---
 async def serve_index(request):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Check multiple possible locations just in case (foolproof logic)
-    path1 = os.path.join(base_dir, 'templates', 'index.html')
-    path2 = os.path.join(base_dir, 'index.html')
+    # Check both root and templates folder to prevent 404 Error!
+    path1 = os.path.join(base_dir, 'index.html')
+    path2 = os.path.join(base_dir, 'templates', 'index.html')
     
-    if os.path.exists(path1):
-        file_path = path1
-    elif os.path.exists(path2):
-        file_path = path2
+    file_path = None
+    if os.path.exists(path1): file_path = path1
+    elif os.path.exists(path2): file_path = path2
+        
+    if file_path:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return web.Response(text=content, content_type='text/html')
+        except Exception as e:
+            logger.error(f"HTML read error: {e}")
+            return web.Response(text=f"<h1>Error reading file</h1><p>{str(e)}</p>", status=500, content_type='text/html')
     else:
-        return web.Response(text="<h1>404 Not Found</h1><p>index.html missing! Please create 'templates/index.html' on GitHub.</p>", status=404, content_type='text/html')
-
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return web.Response(text=content, content_type='text/html')
-    except Exception as e:
-        logger.error(f"HTML load error: {e}")
-        return web.Response(text="<h1>Server Error loading HTML</h1>", status=500, content_type='text/html')
+        logger.error("404 Error: index.html not found!")
+        return web.Response(text="<h1>404 Not Found!</h1><p>index.html file is missing! Please upload it to GitHub in the main folder or templates folder.</p>", status=404, content_type='text/html')
 
 async def main_async():
     app = Application.builder().token(TOKEN).build()
@@ -839,11 +877,8 @@ async def main_async():
             return web.Response()
 
         web_app = web.Application()
-        
-        # Safe Routing to serve HTML correctly
         web_app.router.add_post(webhook_path, telegram_webhook)
         web_app.router.add_get("/", serve_index)
-        web_app.router.add_get("/index.html", serve_index)
         
         runner = web.AppRunner(web_app)
         await runner.setup()
