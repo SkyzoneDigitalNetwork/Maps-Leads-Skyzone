@@ -7,75 +7,230 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* ========================================================
+           GLOBAL CSS VARIABLES AND STYLES
+           ======================================================== */
         :root {
-            --primary: #01875f; --danger: #d32f2f; --bg: #f4f7f6;
-            --card: #ffffff; --text: #202124; --muted: #5f6368;
+            --primary: #01875f; 
+            --danger: #d32f2f; 
+            --bg: #f4f7f6;
+            --card: #ffffff; 
+            --text: #202124; 
+            --muted: #5f6368;
         }
         body {
-            font-family: 'Poppins', sans-serif; background: var(--bg);
-            color: var(--text); margin: 0; padding: 15px; padding-bottom: 60px;
+            font-family: 'Poppins', sans-serif; 
+            background: var(--bg);
+            color: var(--text); 
+            margin: 0; 
+            padding: 15px; 
+            padding-bottom: 60px;
         }
         .card {
-            background: var(--card); border-radius: 16px; padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 20px;
+            background: var(--card); 
+            border-radius: 16px; 
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04); 
+            margin-bottom: 20px;
         }
-        h2 { margin: 0 0 5px 0; color: var(--primary); font-size: 22px; }
-        .grid-2 { display: flex; gap: 10px; margin-top: 15px; }
-        .box { background: #f8f9fa; flex: 1; padding: 15px 10px; border-radius: 12px; border: 1px solid #e8eaed; text-align: center; }
-        .box h3 { margin: 0; font-size: 22px; color: var(--text); }
-        .box span { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+        h2 { 
+            margin: 0 0 5px 0; 
+            color: var(--primary); 
+            font-size: 22px; 
+        }
+        .grid-2 { 
+            display: flex; 
+            gap: 10px; 
+            margin-top: 15px; 
+        }
+        .box { 
+            background: #f8f9fa; 
+            flex: 1; 
+            padding: 15px 10px; 
+            border-radius: 12px; 
+            border: 1px solid #e8eaed; 
+            text-align: center; 
+        }
+        .box h3 { 
+            margin: 0; 
+            font-size: 22px; 
+            color: var(--text); 
+        }
+        .box span { 
+            font-size: 11px; 
+            color: var(--muted); 
+            font-weight: 600; 
+            text-transform: uppercase; 
+        }
         
-        /* Timer */
-        .timer-card { background: linear-gradient(135deg, #fff0f0, #ffebee); border: 2px solid #ffcdd2; text-align: center; }
-        .timer-title { font-size: 12px; font-weight: 700; color: var(--danger); text-transform: uppercase; margin-bottom: 10px; }
-        .time-box { background: var(--card); border-radius: 8px; width: 60px; padding: 10px 0; display: inline-block; margin: 0 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .time-box .num { font-size: 22px; font-weight: 700; color: var(--danger); }
-        .time-box .label { font-size: 10px; color: var(--muted); font-weight: 600; display: block; }
+        /* ========================================================
+           TIMER AND COUNTDOWN CSS
+           ======================================================== */
+        .timer-card { 
+            background: linear-gradient(135deg, #fff0f0, #ffebee); 
+            border: 2px solid #ffcdd2; 
+            text-align: center; 
+        }
+        .timer-title { 
+            font-size: 12px; 
+            font-weight: 700; 
+            color: var(--danger); 
+            text-transform: uppercase; 
+            margin-bottom: 10px; 
+        }
+        .time-box { 
+            background: var(--card); 
+            border-radius: 8px; 
+            width: 60px; 
+            padding: 10px 0; 
+            display: inline-block; 
+            margin: 0 5px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        }
+        .time-box .num { 
+            font-size: 22px; 
+            font-weight: 700; 
+            color: var(--danger); 
+        }
+        .time-box .label { 
+            font-size: 10px; 
+            color: var(--muted); 
+            font-weight: 600; 
+            display: block; 
+        }
         
-        /* Buttons */
+        /* ========================================================
+           BUTTONS CSS
+           ======================================================== */
         .btn {
-            width: 100%; padding: 14px; border-radius: 12px; border: none;
-            font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px;
+            width: 100%; 
+            padding: 14px; 
+            border-radius: 12px; 
+            border: none;
+            font-size: 14px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            margin-bottom: 10px;
             transition: 0.2s;
         }
-        .btn:active { transform: scale(0.98); }
-        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(1, 135, 95, 0.3); }
-        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
-        .btn-warning { background: #f39c12; color: white; }
-        
-        /* Packages */
-        .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; cursor: pointer; transition: 0.3s; }
-        .pkg-card:active { transform: scale(0.98); }
-        .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; }
-        .pkg-price { font-size: 20px; font-weight: 700; color: var(--primary); margin: 5px 0; }
-        
-        /* Form & Chips */
-        .form-group { margin-bottom: 15px; text-align: left; }
-        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; outline: none; }
-        .form-group input:focus, .form-group textarea:focus { border-color: var(--primary); }
-
-        .chip-container { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
-        .chip {
-            flex: 1; padding: 10px; text-align: center; border-radius: 8px; border: 2px solid #e8eaed;
-            font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; background: #f8f9fa; color: var(--muted);
+        .btn:active { 
+            transform: scale(0.98); 
         }
-        .chip.active { border-color: var(--primary); background: #e6f4ea; color: var(--primary); }
+        .btn-primary { 
+            background: var(--primary); 
+            color: white; 
+            box-shadow: 0 4px 10px rgba(1, 135, 95, 0.3); 
+        }
+        .btn-outline { 
+            background: transparent; 
+            border: 2px solid var(--primary); 
+            color: var(--primary); 
+        }
+        .btn-warning { 
+            background: #f39c12; 
+            color: white; 
+        }
         
-        .admin-header { background: #202124; color: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
+        /* ========================================================
+           PACKAGES & PAYMENT CSS
+           ======================================================== */
+        .pkg-card { 
+            border: 1px solid #e8eaed; 
+            border-radius: 12px; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            text-align: left; 
+            cursor: pointer; 
+            transition: 0.3s; 
+        }
+        .pkg-card:active { 
+            transform: scale(0.98); 
+        }
+        .pkg-card.premium { 
+            border: 2px solid var(--primary); 
+            position: relative; 
+            overflow: hidden; 
+        }
+        .pkg-price { 
+            font-size: 20px; 
+            font-weight: 700; 
+            color: var(--primary); 
+            margin: 5px 0; 
+        }
+        .form-group { 
+            margin-bottom: 15px; 
+            text-align: left; 
+        }
+        .form-group label { 
+            display: block; 
+            font-size: 12px; 
+            font-weight: 600; 
+            margin-bottom: 5px; 
+        }
+        .form-group input, .form-group select, .form-group textarea { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            font-family: 'Poppins', sans-serif; 
+            outline: none; 
+        }
+        .form-group input:focus, .form-group textarea:focus { 
+            border-color: var(--primary); 
+        }
+        .chip-container { 
+            display: flex; 
+            gap: 10px; 
+            flex-wrap: wrap; 
+            margin-bottom: 15px; 
+        }
+        .chip {
+            flex: 1; 
+            padding: 10px; 
+            text-align: center; 
+            border-radius: 8px; 
+            border: 2px solid #e8eaed;
+            font-size: 12px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: 0.3s; 
+            background: #f8f9fa; 
+            color: var(--muted);
+        }
+        .chip.active { 
+            border-color: var(--primary); 
+            background: #e6f4ea; 
+            color: var(--primary); 
+        }
+        
+        .admin-header { 
+            background: #202124; 
+            color: white; 
+            padding: 15px; 
+            border-radius: 12px; 
+            margin-bottom: 15px; 
+            text-align: center; 
+        }
 
-        /* Hiding sections initially */
-        #scrape-form, #packages-section, #payment-form, #admin-section, #user-section, #admin-edit-pkg { display: none; }
+        /* Hiding specific sections initially */
+        #scrape-form, #packages-section, #payment-form, #admin-section, #user-section, #admin-edit-pkg { 
+            display: none; 
+        }
     </style>
 </head>
 <body>
 
+    <!-- Language Toggle -->
     <div style="text-align: right; margin-bottom: 10px;">
         <span id="lang-indicator" style="font-size: 12px; font-weight: bold; color: var(--muted);">🌐 Auto Lang</span>
     </div>
 
-    <!-- ================= 1. USER DASHBOARD SECTION ================= -->
+    <!-- ========================================================
+         1. USER DASHBOARD SECTION
+         ======================================================== -->
     <div id="user-section">
+        <!-- User Profile Card -->
         <div class="card profile-card">
             <h2 id="u-greeting">Hello, User</h2>
             <p id="u-id-text" style="margin: 0; font-size: 12px; color: var(--muted);">ID: 00000000</p>
@@ -90,6 +245,7 @@
             </div>
         </div>
 
+        <!-- User Timer Card -->
         <div class="card timer-card" id="timer-container">
             <div class="timer-title" id="t-time-left">Subscription Time Left</div>
             <div id="countdown">
@@ -100,6 +256,7 @@
             <div id="expired-msg" style="display:none; font-size: 18px; font-weight: bold; color: var(--danger);"></div>
         </div>
 
+        <!-- Main Action Buttons -->
         <div id="main-buttons">
             <button class="btn btn-primary" onclick="showScrapeForm()" id="btn-scrape">🚀 Start Scraping</button>
             <button class="btn btn-outline" onclick="showPackages()" id="btn-sub">💎 Subscription & Packages</button>
@@ -150,7 +307,7 @@
             <h3 style="text-align: center; color: var(--primary);" id="t-pkg-title">Premium Packages</h3>
             <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Select a package to buy.</p>
             
-            <!-- Dynamically Loaded Package Cards -->
+            <!-- Dynamic Packages (will be loaded, fallback defaults included) -->
             <div class="pkg-card" onclick="openPaymentForm(1)">
                 <strong id="ui-p1-title">⏳ 24 Hours (Hours)⏰</strong>
                 <div class="pkg-price" id="ui-p1-price">200 BDT</div>
@@ -180,6 +337,7 @@
                 <b id="t-amount">Amount:</b> <span id="selected-price" style="color: var(--danger); font-weight: bold;">...</span>
             </div>
             
+            <!-- Dynamic Payment Numbers Details -->
             <div style="background: #e8f0fe; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; border: 1px solid #cce0ff;" id="payment-numbers-info">
                 <strong>Payment Numbers (Send Money):</strong><br>
                 ✅ Bkash: <b style="cursor: pointer; color: #1a73e8;" onclick="copyNumber(this.innerText)" id="ui-num-bkash">01757481646</b><br>
@@ -189,8 +347,9 @@
                 <i style="font-size: 10px; color: var(--muted); margin-top: 5px; display: block;" id="ui-pay-notice">(Tap number to copy)</i>
             </div>
 
+            <!-- Chips for Payment Method -->
             <div class="form-group">
-                <label id="t-method">Select Payment Method</label>
+                <label id="t-method">Select Payment Method (পেমেন্ট মাধ্যম)</label>
                 <div class="chip-container">
                     <div class="chip active" onclick="setMethod(this, 'Bkash')">Bkash</div>
                     <div class="chip" onclick="setMethod(this, 'Nagad')">Nagad</div>
@@ -213,7 +372,9 @@
         </div>
     </div>
 
-    <!-- ================= 2. ADMIN DASHBOARD SECTION ================= -->
+    <!-- ========================================================
+         2. ADMIN DASHBOARD SECTION (FULLY DYNAMIC)
+         ======================================================== -->
     <div id="admin-section">
         <div class="admin-header">
             <h2>👑 Super Admin Panel</h2>
@@ -222,23 +383,23 @@
 
         <div class="card" id="admin-main-menu">
             <h3 style="margin-top:0;">Management Actions</h3>
-            <!-- DIRECT API CALLS -->
-            <button class="btn btn-primary" onclick="sendAdminCmd('add_user')">➕ Add User (Telegram)</button>
-            <button class="btn btn-primary" onclick="sendAdminCmd('add_team_leader')">👥 Add Team Leader</button>
-            <button class="btn btn-outline" onclick="sendAdminCmd('manage_users')">⚙️ Manage Users & Time</button>
+            <!-- Direct API Commands -> NO CRASH! -->
+            <button class="btn btn-primary" onclick="sendAdminApiCmd('add_user')">➕ Add User (Telegram)</button>
+            <button class="btn btn-primary" onclick="sendAdminApiCmd('add_team_leader')">👥 Add Team Leader</button>
+            <button class="btn btn-outline" onclick="sendAdminApiCmd('manage_users')">⚙️ Manage Users & Time</button>
             
             <button class="btn btn-warning" onclick="showAdminPkgEdit()">📝 Edit Packages & Pricing</button>
             
-            <button class="btn btn-danger" onclick="sendAdminCmd('toggle_bot_buttons')">👁️ Hide/Show Bot Buttons</button>
+            <button class="btn btn-danger" onclick="sendAdminApiCmd('toggle_bot_buttons')">👁️ Hide/Show Bot Buttons</button>
             <button class="btn btn-outline" onclick="tg.close()">Close Web App</button>
         </div>
 
         <!-- ================= ADMIN EDIT PACKAGES FORM ================= -->
         <div class="card" id="admin-edit-pkg">
             <h3 style="margin-top:0; color: var(--primary);">System Settings</h3>
-            <p style="font-size:12px; color:var(--muted); margin-bottom: 15px;">এখান থেকে পরিবর্তন করলে সব ইউজারের কাছে রিয়েল-টাইমে আপডেট হয়ে যাবে।</p>
+            <p style="font-size:12px; color:var(--muted); margin-bottom: 15px;">অ্যাডমিন প্যানেল: এখান থেকে সবকিছু পরিবর্তন করতে পারবেন। সেভ করলে সব ইউজারের কাছে আপডেট হয়ে যাবে।</p>
             
-            <!-- Packages -->
+            <!-- Edit Packages -->
             <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
                 <h4 style="margin: 0 0 10px 0; font-size: 14px; color:var(--primary);">Package 1</h4>
                 <div class="form-group"><label>Name/Time:</label><input type="text" id="ad-p1-title"></div>
@@ -257,7 +418,7 @@
                 <div class="form-group"><label>Price:</label><input type="text" id="ad-p4-price"></div>
             </div>
 
-            <!-- Numbers -->
+            <!-- Edit Payment Numbers -->
             <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
                 <h4 style="margin: 0 0 10px 0; font-size: 14px; color:var(--danger);">Payment Numbers</h4>
                 <div class="form-group"><label>Bkash Number:</label><input type="text" id="ad-bkash"></div>
@@ -265,21 +426,26 @@
                 <div class="form-group"><label>Rocket Number:</label><input type="text" id="ad-rocket"></div>
                 <div class="form-group"><label>Binance ID / Text:</label><input type="text" id="ad-binance"></div>
                 <div class="form-group"><label>Important Notice:</label>
-                    <textarea id="ad-notice" rows="2" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: 'Poppins';"></textarea>
+                    <textarea id="ad-notice" rows="3" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: 'Poppins';"></textarea>
                 </div>
             </div>
 
-            <button class="btn btn-primary" onclick="savePackagesToServer()" id="btn-save-settings">💾 Save All Changes</button>
+            <button class="btn btn-primary" onclick="savePackagesToFirebase()" id="btn-save-settings">💾 Save All Changes</button>
             <button class="btn btn-outline" onclick="goBack('admin-edit-pkg', 'admin-main-menu')">Cancel</button>
         </div>
     </div>
 
-    <!-- ================= JAVASCRIPT LOGIC (100% CRASH-PROOF) ================= -->
+    <!-- ========================================================
+         JAVASCRIPT LOGIC: 100% CRASH-PROOF FETCH API SYSTEM
+         ======================================================== -->
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Auto expand Web App
+        tg.expand();
 
-        // --- Core Dynamic Variables ---
+        // 🌟 SERVER API BASE URL (Directly pointing to our Python Server)
+        const API_BASE = window.location.origin;
+
+        // Default Dynamic Settings (Fallback)
         let dynamicSettings = {
             p1: { title: "⏳ 24 Hours (Hours)⏰", price: "200 BDT" },
             p2: { title: "🥉 7 Day (Day)", price: "1200 BDT" },
@@ -318,17 +484,17 @@
         const teamLimit = parseInt(urlParams.get('team_limit') || '0');
         const teamAdded = parseInt(urlParams.get('team_added') || '0');
         
-        let fbUrl = decodeURIComponent(urlParams.get('fb') || '').replace(/\/$/, ""); 
+        let fbUrl = urlParams.get('fb') || '';
+        fbUrl = decodeURIComponent(fbUrl).replace(/\/$/, ""); 
 
         let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
         document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
         applyLanguageTranslations(userLang);
 
-        // Fetch settings smoothly from Firebase REST API
         async function fetchSettings() {
             if(!fbUrl) return;
             try {
-                let response = await fetch(`${fbUrl}/web_settings.json`);
+                let response = await fetch(`${fbUrl}/web_settings/packages.json`);
                 let data = await response.json();
                 if(data) {
                     if(data.p1) dynamicSettings.p1 = data.p1;
@@ -340,7 +506,8 @@
                 }
                 updateUIWithDynamicSettings();
             } catch(e) {
-                updateUIWithDynamicSettings(); // fallback to default
+                console.log("Using default settings.");
+                updateUIWithDynamicSettings();
             }
         }
 
@@ -369,6 +536,7 @@
                 document.getElementById('ad-p3-price').value = dynamicSettings.p3.price;
                 document.getElementById('ad-p4-title').value = dynamicSettings.p4.title;
                 document.getElementById('ad-p4-price').value = dynamicSettings.p4.price;
+                
                 document.getElementById('ad-bkash').value = dynamicSettings.numbers.bkash;
                 document.getElementById('ad-nagad').value = dynamicSettings.numbers.nagad;
                 document.getElementById('ad-rocket').value = dynamicSettings.numbers.rocket;
@@ -379,7 +547,6 @@
 
         fetchSettings();
 
-        // Display correct section based on role
         if (role === 'admin') {
             document.getElementById('admin-section').style.display = 'block';
             document.getElementById('user-section').style.display = 'none';
@@ -453,7 +620,6 @@
             }
         }
 
-        // Navigation
         function showScrapeForm() { goBack('main-buttons', 'scrape-form'); }
         function showPackages() { goBack('main-buttons', 'packages-section'); }
         function showAdminPkgEdit() { goBack('admin-main-menu', 'admin-edit-pkg'); }
@@ -468,13 +634,16 @@
             document.getElementById(currentId).style.display = 'none';
             document.getElementById(targetId).style.display = 'block';
         }
+        
         function toggleCustomCat() {
             document.getElementById('custom-cat-group').style.display = document.getElementById('cat-select').value === 'Custom' ? 'block' : 'none';
         }
+        
         function copyNumber(num) {
             navigator.clipboard.writeText(num);
             tg.showAlert(userLang === 'bn' ? `নাম্বার কপি করা হয়েছে: ${num}` : `Number Copied: ${num}`);
         }
+
         function setMethod(element, method) {
             document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
@@ -482,7 +651,7 @@
         }
 
         // ========================================================
-        // FAST DIRECT API COMMUNICATIONS (CRASH-PROOF)
+        // 🌟 DIRECT API CALLS (CRASH-PROOF & FAST)
         // ========================================================
         async function submitScrape() {
             let cat = document.getElementById('cat-select').value;
@@ -498,19 +667,24 @@
             btn.innerText = "Processing..."; 
             btn.disabled = true;
 
-            let query = `${cat} in ${loc}`;
-            
             try {
-                // Call Python API Endpoint Directly
-                await fetch('/api/scrape', {
+                let response = await fetch(`${API_BASE}/api/scrape`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: uid, uname: uName, query: query })
+                    body: JSON.stringify({ uid: uid, uname: uName, query: `${cat} in ${loc}` })
                 });
                 
-                tg.close(); // Silently close Web App
+                let data = await response.json();
+                if(data.status === 'success'){
+                    tg.showAlert("✅ Success! Check Telegram Bot.");
+                    tg.close(); // Seamless close
+                } else {
+                    tg.showAlert("⚠️ Error: " + data.message);
+                    btn.innerText = dict[userLang].startNow;
+                    btn.disabled = false;
+                }
             } catch (error) {
-                tg.showAlert("Network Error! Try again.");
+                tg.showAlert("❌ Server Error!");
                 btn.innerText = dict[userLang].startNow;
                 btn.disabled = false;
             }
@@ -529,43 +703,53 @@
             }
 
             let btn = document.getElementById('btn-submit-pay');
-            btn.innerText = "Sending to Admin..."; 
+            btn.innerText = "Sending..."; 
             btn.disabled = true;
 
-            let fullSender = `${method} - ${senderNum}`;
-
             try {
-                await fetch('/api/payment', {
+                let response = await fetch(`${API_BASE}/api/payment`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: uid, uname: uName, plan: plan, price: price, sender: fullSender, trxid: trxid })
+                    body: JSON.stringify({ 
+                        uid: uid, uname: uName, 
+                        plan: plan, price: price, 
+                        sender: `${method} - ${senderNum}`, trxid: trxid 
+                    })
                 });
-                tg.showAlert(userLang === 'bn' ? "আপনার পেমেন্ট রিকোয়েস্ট সাবমিট করা হয়েছে!" : "Payment submitted successfully!");
+
+                tg.showAlert("✅ Payment info sent to Admin!");
                 tg.close();
             } catch (error) {
-                tg.showAlert("Network Error! Try again.");
+                tg.showAlert("❌ Server Error!");
                 btn.innerText = dict[userLang].submitPay;
                 btn.disabled = false;
             }
         }
 
-        async function sendAdminCmd(cmd) {
+        // ========================================================
+        // ADMIN PANEL FUNCTIONS (EDIT SETTINGS AND SEND COMMANDS)
+        // ========================================================
+        async function sendAdminApiCmd(cmdStr) {
             try {
-                await fetch('/api/admin', {
+                let response = await fetch(`${API_BASE}/api/admin`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: uid, cmd: cmd })
+                    body: JSON.stringify({ uid: uid, cmd: cmdStr })
                 });
+                tg.showAlert("Command Executed. Check Bot Chat.");
                 tg.close();
-            } catch(e) { tg.showAlert("Command failed."); }
+            } catch (error) {
+                tg.showAlert("❌ Failed to send command.");
+            }
         }
 
-        async function savePackagesToServer() {
-            if(!fbUrl) return;
+        async function savePackagesToFirebase() {
+            if(!fbUrl) { tg.showAlert("Firebase URL missing!"); return; }
+            
             let btn = document.getElementById('btn-save-settings');
             btn.innerText = "Saving Data..."; btn.disabled = true;
             
-            let pkgData = {
+            let newSettings = {
                 p1: { title: document.getElementById('ad-p1-title').value, price: document.getElementById('ad-p1-price').value },
                 p2: { title: document.getElementById('ad-p2-title').value, price: document.getElementById('ad-p2-price').value },
                 p3: { title: document.getElementById('ad-p3-title').value, price: document.getElementById('ad-p3-price').value },
@@ -580,21 +764,18 @@
             };
 
             try {
-                // Call Python secure admin endpoint
-                let res = await fetch('/api/admin/save_pkg', {
+                // We use our safe Python server API to save settings securely
+                await fetch(`${API_BASE}/api/admin/save_pkg`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: uid, pkg_data: pkgData })
+                    body: JSON.stringify({ uid: uid, pkg_data: newSettings })
                 });
-                let result = await res.json();
-                if(result.status === 'success') {
-                    dynamicSettings = pkgData;
-                    updateUIWithDynamicSettings();
-                    tg.showAlert("✅ System Settings Saved!");
-                    goBack('admin-edit-pkg', 'admin-main-menu');
-                } else {
-                    tg.showAlert("❌ Unauthorized or failed.");
-                }
+                
+                dynamicSettings = newSettings;
+                updateUIWithDynamicSettings();
+                
+                tg.showAlert("✅ System Settings Saved Successfully!");
+                goBack('admin-edit-pkg', 'admin-main-menu');
             } catch(e) {
                 tg.showAlert("❌ Failed to save.");
             }
