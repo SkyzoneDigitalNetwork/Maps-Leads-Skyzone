@@ -7,230 +7,75 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* ========================================================
-           GLOBAL CSS VARIABLES AND STYLES
-           ======================================================== */
         :root {
-            --primary: #01875f; 
-            --danger: #d32f2f; 
-            --bg: #f4f7f6;
-            --card: #ffffff; 
-            --text: #202124; 
-            --muted: #5f6368;
+            --primary: #01875f; --danger: #d32f2f; --bg: #f4f7f6;
+            --card: #ffffff; --text: #202124; --muted: #5f6368;
         }
         body {
-            font-family: 'Poppins', sans-serif; 
-            background: var(--bg);
-            color: var(--text); 
-            margin: 0; 
-            padding: 15px; 
-            padding-bottom: 60px;
+            font-family: 'Poppins', sans-serif; background: var(--bg);
+            color: var(--text); margin: 0; padding: 15px; padding-bottom: 60px;
         }
         .card {
-            background: var(--card); 
-            border-radius: 16px; 
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.04); 
-            margin-bottom: 20px;
+            background: var(--card); border-radius: 16px; padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 20px;
         }
-        h2 { 
-            margin: 0 0 5px 0; 
-            color: var(--primary); 
-            font-size: 22px; 
-        }
-        .grid-2 { 
-            display: flex; 
-            gap: 10px; 
-            margin-top: 15px; 
-        }
-        .box { 
-            background: #f8f9fa; 
-            flex: 1; 
-            padding: 15px 10px; 
-            border-radius: 12px; 
-            border: 1px solid #e8eaed; 
-            text-align: center; 
-        }
-        .box h3 { 
-            margin: 0; 
-            font-size: 22px; 
-            color: var(--text); 
-        }
-        .box span { 
-            font-size: 11px; 
-            color: var(--muted); 
-            font-weight: 600; 
-            text-transform: uppercase; 
-        }
+        h2 { margin: 0 0 5px 0; color: var(--primary); font-size: 22px; }
+        .grid-2 { display: flex; gap: 10px; margin-top: 15px; }
+        .box { background: #f8f9fa; flex: 1; padding: 15px 10px; border-radius: 12px; border: 1px solid #e8eaed; text-align: center; }
+        .box h3 { margin: 0; font-size: 22px; color: var(--text); }
+        .box span { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
         
-        /* ========================================================
-           TIMER AND COUNTDOWN CSS
-           ======================================================== */
-        .timer-card { 
-            background: linear-gradient(135deg, #fff0f0, #ffebee); 
-            border: 2px solid #ffcdd2; 
-            text-align: center; 
-        }
-        .timer-title { 
-            font-size: 12px; 
-            font-weight: 700; 
-            color: var(--danger); 
-            text-transform: uppercase; 
-            margin-bottom: 10px; 
-        }
-        .time-box { 
-            background: var(--card); 
-            border-radius: 8px; 
-            width: 60px; 
-            padding: 10px 0; 
-            display: inline-block; 
-            margin: 0 5px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
-        }
-        .time-box .num { 
-            font-size: 22px; 
-            font-weight: 700; 
-            color: var(--danger); 
-        }
-        .time-box .label { 
-            font-size: 10px; 
-            color: var(--muted); 
-            font-weight: 600; 
-            display: block; 
-        }
+        /* Timer */
+        .timer-card { background: linear-gradient(135deg, #fff0f0, #ffebee); border: 2px solid #ffcdd2; text-align: center; }
+        .timer-title { font-size: 12px; font-weight: 700; color: var(--danger); text-transform: uppercase; margin-bottom: 10px; }
+        .time-box { background: var(--card); border-radius: 8px; width: 60px; padding: 10px 0; display: inline-block; margin: 0 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .time-box .num { font-size: 22px; font-weight: 700; color: var(--danger); }
+        .time-box .label { font-size: 10px; color: var(--muted); font-weight: 600; display: block; }
         
-        /* ========================================================
-           BUTTONS CSS
-           ======================================================== */
+        /* Buttons */
         .btn {
-            width: 100%; 
-            padding: 14px; 
-            border-radius: 12px; 
-            border: none;
-            font-size: 14px; 
-            font-weight: 600; 
-            cursor: pointer; 
-            margin-bottom: 10px;
+            width: 100%; padding: 14px; border-radius: 12px; border: none;
+            font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px;
             transition: 0.2s;
         }
-        .btn:active { 
-            transform: scale(0.98); 
-        }
-        .btn-primary { 
-            background: var(--primary); 
-            color: white; 
-            box-shadow: 0 4px 10px rgba(1, 135, 95, 0.3); 
-        }
-        .btn-outline { 
-            background: transparent; 
-            border: 2px solid var(--primary); 
-            color: var(--primary); 
-        }
-        .btn-warning { 
-            background: #f39c12; 
-            color: white; 
-        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(1, 135, 95, 0.3); }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-warning { background: #f39c12; color: white; }
         
-        /* ========================================================
-           PACKAGES & PAYMENT CSS
-           ======================================================== */
-        .pkg-card { 
-            border: 1px solid #e8eaed; 
-            border-radius: 12px; 
-            padding: 15px; 
-            margin-bottom: 15px; 
-            text-align: left; 
-            cursor: pointer; 
-            transition: 0.3s; 
-        }
-        .pkg-card:active { 
-            transform: scale(0.98); 
-        }
-        .pkg-card.premium { 
-            border: 2px solid var(--primary); 
-            position: relative; 
-            overflow: hidden; 
-        }
-        .pkg-price { 
-            font-size: 20px; 
-            font-weight: 700; 
-            color: var(--primary); 
-            margin: 5px 0; 
-        }
-        .form-group { 
-            margin-bottom: 15px; 
-            text-align: left; 
-        }
-        .form-group label { 
-            display: block; 
-            font-size: 12px; 
-            font-weight: 600; 
-            margin-bottom: 5px; 
-        }
-        .form-group input, .form-group select, .form-group textarea { 
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            box-sizing: border-box; 
-            font-family: 'Poppins', sans-serif; 
-            outline: none; 
-        }
-        .form-group input:focus, .form-group textarea:focus { 
-            border-color: var(--primary); 
-        }
-        .chip-container { 
-            display: flex; 
-            gap: 10px; 
-            flex-wrap: wrap; 
-            margin-bottom: 15px; 
-        }
-        .chip {
-            flex: 1; 
-            padding: 10px; 
-            text-align: center; 
-            border-radius: 8px; 
-            border: 2px solid #e8eaed;
-            font-size: 12px; 
-            font-weight: 600; 
-            cursor: pointer; 
-            transition: 0.3s; 
-            background: #f8f9fa; 
-            color: var(--muted);
-        }
-        .chip.active { 
-            border-color: var(--primary); 
-            background: #e6f4ea; 
-            color: var(--primary); 
-        }
+        /* Packages */
+        .pkg-card { border: 1px solid #e8eaed; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; cursor: pointer; transition: 0.3s; }
+        .pkg-card:active { transform: scale(0.98); }
+        .pkg-card.premium { border: 2px solid var(--primary); position: relative; overflow: hidden; }
+        .pkg-price { font-size: 20px; font-weight: 700; color: var(--primary); margin: 5px 0; }
         
-        .admin-header { 
-            background: #202124; 
-            color: white; 
-            padding: 15px; 
-            border-radius: 12px; 
-            margin-bottom: 15px; 
-            text-align: center; 
-        }
+        /* Form & Chips */
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-family: 'Poppins', sans-serif; outline: none; }
+        .form-group input:focus, .form-group textarea:focus { border-color: var(--primary); }
 
-        /* Hiding specific sections initially */
-        #scrape-form, #packages-section, #payment-form, #admin-section, #user-section, #admin-edit-pkg { 
-            display: none; 
+        .chip-container { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .chip {
+            flex: 1; padding: 10px; text-align: center; border-radius: 8px; border: 2px solid #e8eaed;
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; background: #f8f9fa; color: var(--muted);
         }
+        .chip.active { border-color: var(--primary); background: #e6f4ea; color: var(--primary); }
+        
+        .admin-header { background: #202124; color: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
+
+        /* Hiding sections initially */
+        #scrape-form, #packages-section, #payment-form, #admin-section, #user-section, #admin-edit-pkg { display: none; }
     </style>
 </head>
 <body>
 
-    <!-- Language Toggle -->
     <div style="text-align: right; margin-bottom: 10px;">
         <span id="lang-indicator" style="font-size: 12px; font-weight: bold; color: var(--muted);">🌐 Auto Lang</span>
     </div>
 
-    <!-- ========================================================
-         1. USER DASHBOARD SECTION
-         ======================================================== -->
+    <!-- ================= 1. USER DASHBOARD SECTION ================= -->
     <div id="user-section">
-        <!-- User Profile Card -->
         <div class="card profile-card">
             <h2 id="u-greeting">Hello, User</h2>
             <p id="u-id-text" style="margin: 0; font-size: 12px; color: var(--muted);">ID: 00000000</p>
@@ -245,7 +90,6 @@
             </div>
         </div>
 
-        <!-- User Timer Card -->
         <div class="card timer-card" id="timer-container">
             <div class="timer-title" id="t-time-left">Subscription Time Left</div>
             <div id="countdown">
@@ -256,13 +100,12 @@
             <div id="expired-msg" style="display:none; font-size: 18px; font-weight: bold; color: var(--danger);"></div>
         </div>
 
-        <!-- Main Action Buttons -->
         <div id="main-buttons">
             <button class="btn btn-primary" onclick="showScrapeForm()" id="btn-scrape">🚀 Start Scraping</button>
             <button class="btn btn-outline" onclick="showPackages()" id="btn-sub">💎 Subscription & Packages</button>
         </div>
 
-        <!-- ================= SCRAPING FORM ================= -->
+        <!-- ================= SCRAPING FORM (20 Categories) ================= -->
         <div class="card" id="scrape-form">
             <h3 style="margin-top:0; color: var(--primary);" id="t-scrape-title">New Search</h3>
             <div class="form-group">
@@ -307,6 +150,7 @@
             <h3 style="text-align: center; color: var(--primary);" id="t-pkg-title">Premium Packages</h3>
             <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Select a package to buy.</p>
             
+            <!-- Dynamically Loaded Package Cards -->
             <div class="pkg-card" onclick="openPaymentForm(1)">
                 <strong id="ui-p1-title">⏳ 24 Hours (Hours)⏰</strong>
                 <div class="pkg-price" id="ui-p1-price">200 BDT</div>
@@ -336,7 +180,6 @@
                 <b id="t-amount">Amount:</b> <span id="selected-price" style="color: var(--danger); font-weight: bold;">...</span>
             </div>
             
-            <!-- Dynamic Payment Numbers Details -->
             <div style="background: #e8f0fe; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; border: 1px solid #cce0ff;" id="payment-numbers-info">
                 <strong>Payment Numbers (Send Money):</strong><br>
                 ✅ Bkash: <b style="cursor: pointer; color: #1a73e8;" onclick="copyNumber(this.innerText)" id="ui-num-bkash">01757481646</b><br>
@@ -346,7 +189,6 @@
                 <i style="font-size: 10px; color: var(--muted); margin-top: 5px; display: block;" id="ui-pay-notice">(Tap number to copy)</i>
             </div>
 
-            <!-- Chips for Payment Method -->
             <div class="form-group">
                 <label id="t-method">Select Payment Method</label>
                 <div class="chip-container">
@@ -371,9 +213,7 @@
         </div>
     </div>
 
-    <!-- ========================================================
-         2. ADMIN DASHBOARD SECTION (FULLY DYNAMIC)
-         ======================================================== -->
+    <!-- ================= 2. ADMIN DASHBOARD SECTION ================= -->
     <div id="admin-section">
         <div class="admin-header">
             <h2>👑 Super Admin Panel</h2>
@@ -382,24 +222,23 @@
 
         <div class="card" id="admin-main-menu">
             <h3 style="margin-top:0;">Management Actions</h3>
-            <!-- Direct integration with Python Telegram commands -->
+            <!-- DIRECT API CALLS -->
             <button class="btn btn-primary" onclick="sendAdminCmd('add_user')">➕ Add User (Telegram)</button>
             <button class="btn btn-primary" onclick="sendAdminCmd('add_team_leader')">👥 Add Team Leader</button>
             <button class="btn btn-outline" onclick="sendAdminCmd('manage_users')">⚙️ Manage Users & Time</button>
             
-            <!-- Real-time Admin Web App Settings Edit -->
             <button class="btn btn-warning" onclick="showAdminPkgEdit()">📝 Edit Packages & Pricing</button>
             
             <button class="btn btn-danger" onclick="sendAdminCmd('toggle_bot_buttons')">👁️ Hide/Show Bot Buttons</button>
             <button class="btn btn-outline" onclick="tg.close()">Close Web App</button>
         </div>
 
-        <!-- ================= FULL ADMIN SETTINGS FORM ================= -->
+        <!-- ================= ADMIN EDIT PACKAGES FORM ================= -->
         <div class="card" id="admin-edit-pkg">
             <h3 style="margin-top:0; color: var(--primary);">System Settings</h3>
-            <p style="font-size:12px; color:var(--muted); margin-bottom: 15px;">অ্যাডমিন প্যানেল: এখান থেকে সবকিছু পরিবর্তন করতে পারবেন। সেভ করলে সব ইউজারের কাছে আপডেট হয়ে যাবে।</p>
+            <p style="font-size:12px; color:var(--muted); margin-bottom: 15px;">এখান থেকে পরিবর্তন করলে সব ইউজারের কাছে রিয়েল-টাইমে আপডেট হয়ে যাবে।</p>
             
-            <!-- Edit Packages -->
+            <!-- Packages -->
             <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
                 <h4 style="margin: 0 0 10px 0; font-size: 14px; color:var(--primary);">Package 1</h4>
                 <div class="form-group"><label>Name/Time:</label><input type="text" id="ad-p1-title"></div>
@@ -418,7 +257,7 @@
                 <div class="form-group"><label>Price:</label><input type="text" id="ad-p4-price"></div>
             </div>
 
-            <!-- Edit Payment Numbers -->
+            <!-- Numbers -->
             <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
                 <h4 style="margin: 0 0 10px 0; font-size: 14px; color:var(--danger);">Payment Numbers</h4>
                 <div class="form-group"><label>Bkash Number:</label><input type="text" id="ad-bkash"></div>
@@ -426,23 +265,21 @@
                 <div class="form-group"><label>Rocket Number:</label><input type="text" id="ad-rocket"></div>
                 <div class="form-group"><label>Binance ID / Text:</label><input type="text" id="ad-binance"></div>
                 <div class="form-group"><label>Important Notice:</label>
-                    <textarea id="ad-notice" rows="3" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: 'Poppins';"></textarea>
+                    <textarea id="ad-notice" rows="2" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: 'Poppins';"></textarea>
                 </div>
             </div>
 
-            <button class="btn btn-primary" onclick="savePackagesToFirebase()" id="btn-save-settings">💾 Save All Changes</button>
+            <button class="btn btn-primary" onclick="savePackagesToServer()" id="btn-save-settings">💾 Save All Changes</button>
             <button class="btn btn-outline" onclick="goBack('admin-edit-pkg', 'admin-main-menu')">Cancel</button>
         </div>
     </div>
 
-    <!-- ========================================================
-         JAVASCRIPT LOGIC, FIREBASE FETCH & CRASH-PROOF SYSTEM
-         ======================================================== -->
+    <!-- ================= JAVASCRIPT LOGIC (100% CRASH-PROOF) ================= -->
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand();
+        tg.expand(); // Auto expand Web App
 
-        // Object to hold our dynamic settings loaded from Firebase
+        // --- Core Dynamic Variables ---
         let dynamicSettings = {
             p1: { title: "⏳ 24 Hours (Hours)⏰", price: "200 BDT" },
             p2: { title: "🥉 7 Day (Day)", price: "1200 BDT" },
@@ -452,7 +289,6 @@
             notice: "(Tap number to copy)"
         };
 
-        // Language Dictionary
         const dict = {
             en: {
                 greeting: "Hello,", searches: "Searches", leads: "Leads", timeLeft: "Subscription Time Left",
@@ -474,7 +310,6 @@
             }
         };
 
-        // Extract Params from URL (Passed from Python bot)
         const urlParams = new URLSearchParams(window.location.search);
         const uid = urlParams.get('uid') || '000';
         const uName = decodeURIComponent(urlParams.get('name') || 'User');
@@ -482,18 +317,14 @@
         const endsAtStr = urlParams.get('ends');
         const teamLimit = parseInt(urlParams.get('team_limit') || '0');
         const teamAdded = parseInt(urlParams.get('team_added') || '0');
-        const botUsername = urlParams.get('bot') || '';
         
-        // Critical for Real-time Database access
-        let fbUrl = urlParams.get('fb') || '';
-        fbUrl = decodeURIComponent(fbUrl).replace(/\/$/, ""); 
+        let fbUrl = decodeURIComponent(urlParams.get('fb') || '').replace(/\/$/, ""); 
 
-        // Set Language Automatically
         let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
         document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
         applyLanguageTranslations(userLang);
 
-        // Fetch dynamic settings immediately on load
+        // Fetch settings smoothly from Firebase REST API
         async function fetchSettings() {
             if(!fbUrl) return;
             try {
@@ -509,14 +340,11 @@
                 }
                 updateUIWithDynamicSettings();
             } catch(e) {
-                console.log("Failed to fetch custom settings. Using defaults.");
-                updateUIWithDynamicSettings();
+                updateUIWithDynamicSettings(); // fallback to default
             }
         }
 
-        // Apply dynamically fetched settings to User & Admin views
         function updateUIWithDynamicSettings() {
-            // User Packages View
             document.getElementById('ui-p1-title').innerText = dynamicSettings.p1.title;
             document.getElementById('ui-p1-price').innerText = dynamicSettings.p1.price;
             document.getElementById('ui-p2-title').innerText = dynamicSettings.p2.title;
@@ -526,14 +354,12 @@
             document.getElementById('ui-p4-title').innerText = dynamicSettings.p4.title;
             document.getElementById('ui-p4-price').innerText = dynamicSettings.p4.price;
             
-            // User Payment View
             document.getElementById('ui-num-bkash').innerText = dynamicSettings.numbers.bkash;
             document.getElementById('ui-num-nagad').innerText = dynamicSettings.numbers.nagad;
             document.getElementById('ui-num-rocket').innerText = dynamicSettings.numbers.rocket;
             document.getElementById('ui-num-binance').innerText = dynamicSettings.numbers.binance;
             document.getElementById('ui-pay-notice').innerText = dynamicSettings.notice;
 
-            // Admin Edit Form View
             if (role === 'admin') {
                 document.getElementById('ad-p1-title').value = dynamicSettings.p1.title;
                 document.getElementById('ad-p1-price').value = dynamicSettings.p1.price;
@@ -543,7 +369,6 @@
                 document.getElementById('ad-p3-price').value = dynamicSettings.p3.price;
                 document.getElementById('ad-p4-title').value = dynamicSettings.p4.title;
                 document.getElementById('ad-p4-price').value = dynamicSettings.p4.price;
-                
                 document.getElementById('ad-bkash').value = dynamicSettings.numbers.bkash;
                 document.getElementById('ad-nagad').value = dynamicSettings.numbers.nagad;
                 document.getElementById('ad-rocket').value = dynamicSettings.numbers.rocket;
@@ -552,13 +377,12 @@
             }
         }
 
-        // Initialize App
-        fetchSettings(); // Starts the fetch process immediately
+        fetchSettings();
 
-        // Load the Correct Role View
+        // Display correct section based on role
         if (role === 'admin') {
             document.getElementById('admin-section').style.display = 'block';
-            document.getElementById('admin-main-menu').style.display = 'block';
+            document.getElementById('user-section').style.display = 'none';
         } else {
             document.getElementById('user-section').style.display = 'block';
             document.getElementById('main-buttons').style.display = 'block';
@@ -629,14 +453,13 @@
             }
         }
 
-        // Display Logic Handlers
+        // Navigation
         function showScrapeForm() { goBack('main-buttons', 'scrape-form'); }
         function showPackages() { goBack('main-buttons', 'packages-section'); }
         function showAdminPkgEdit() { goBack('admin-main-menu', 'admin-edit-pkg'); }
         
         function openPaymentForm(pkgNum) {
             goBack('packages-section', 'payment-form');
-            // Dynamically set selected plan
             document.getElementById('selected-plan').innerText = dynamicSettings[`p${pkgNum}`].title;
             document.getElementById('selected-price').innerText = dynamicSettings[`p${pkgNum}`].price;
         }
@@ -645,16 +468,13 @@
             document.getElementById(currentId).style.display = 'none';
             document.getElementById(targetId).style.display = 'block';
         }
-        
         function toggleCustomCat() {
             document.getElementById('custom-cat-group').style.display = document.getElementById('cat-select').value === 'Custom' ? 'block' : 'none';
         }
-        
         function copyNumber(num) {
             navigator.clipboard.writeText(num);
             tg.showAlert(userLang === 'bn' ? `নাম্বার কপি করা হয়েছে: ${num}` : `Number Copied: ${num}`);
         }
-
         function setMethod(element, method) {
             document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
@@ -662,7 +482,7 @@
         }
 
         // ========================================================
-        // 100% CRASH-PROOF & DEEP-LINKLESS DATA SUBMISSION
+        // FAST DIRECT API COMMUNICATIONS (CRASH-PROOF)
         // ========================================================
         async function submitScrape() {
             let cat = document.getElementById('cat-select').value;
@@ -680,17 +500,20 @@
 
             let query = `${cat} in ${loc}`;
             
-            // DIRECT FIREBASE SUBMISSION & BOT RE-DIRECT
-            if(fbUrl) {
-                await fetch(`${fbUrl}/pending_requests/${uid}.json`, {
-                    method: 'PUT',
+            try {
+                // Call Python API Endpoint Directly
+                await fetch('/api/scrape', {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'scrape', query: query, timestamp: Date.now() })
+                    body: JSON.stringify({ uid: uid, uname: uName, query: query })
                 });
+                
+                tg.close(); // Silently close Web App
+            } catch (error) {
+                tg.showAlert("Network Error! Try again.");
+                btn.innerText = dict[userLang].startNow;
+                btn.disabled = false;
             }
-            
-            tg.openTelegramLink(`https://t.me/${botUsername}?text=/start%20do_scrape`);
-            tg.close();
         }
 
         async function submitPayment() {
@@ -711,31 +534,38 @@
 
             let fullSender = `${method} - ${senderNum}`;
 
-            if(fbUrl) {
-                await fetch(`${fbUrl}/pending_requests/${uid}.json`, {
-                    method: 'PUT',
+            try {
+                await fetch('/api/payment', {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        action: 'payment', plan: plan, price: price, 
-                        sender: fullSender, trxid: trxid, timestamp: Date.now() 
-                    })
+                    body: JSON.stringify({ uid: uid, uname: uName, plan: plan, price: price, sender: fullSender, trxid: trxid })
                 });
+                tg.showAlert(userLang === 'bn' ? "আপনার পেমেন্ট রিকোয়েস্ট সাবমিট করা হয়েছে!" : "Payment submitted successfully!");
+                tg.close();
+            } catch (error) {
+                tg.showAlert("Network Error! Try again.");
+                btn.innerText = dict[userLang].submitPay;
+                btn.disabled = false;
             }
-
-            tg.openTelegramLink(`https://t.me/${botUsername}?text=/start%20do_payment`);
-            tg.close();
         }
 
-        // ========================================================
-        // ADMIN PANEL FUNCTIONS (EDIT PACKAGES REAL-TIME)
-        // ========================================================
-        async function savePackagesToFirebase() {
-            if(!fbUrl) { tg.showAlert("Firebase URL missing!"); return; }
-            
+        async function sendAdminCmd(cmd) {
+            try {
+                await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: uid, cmd: cmd })
+                });
+                tg.close();
+            } catch(e) { tg.showAlert("Command failed."); }
+        }
+
+        async function savePackagesToServer() {
+            if(!fbUrl) return;
             let btn = document.getElementById('btn-save-settings');
             btn.innerText = "Saving Data..."; btn.disabled = true;
             
-            let newSettings = {
+            let pkgData = {
                 p1: { title: document.getElementById('ad-p1-title').value, price: document.getElementById('ad-p1-price').value },
                 p2: { title: document.getElementById('ad-p2-title').value, price: document.getElementById('ad-p2-price').value },
                 p3: { title: document.getElementById('ad-p3-title').value, price: document.getElementById('ad-p3-price').value },
@@ -750,29 +580,25 @@
             };
 
             try {
-                await fetch(`${fbUrl}/web_settings.json`, {
-                    method: 'PUT',
+                // Call Python secure admin endpoint
+                let res = await fetch('/api/admin/save_pkg', {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newSettings)
+                    body: JSON.stringify({ uid: uid, pkg_data: pkgData })
                 });
-                
-                // Update local settings immediately
-                dynamicSettings = newSettings;
-                updateUIWithDynamicSettings();
-                
-                tg.showAlert("✅ System Settings Saved Successfully! All users will now see these changes.");
-                goBack('admin-edit-pkg', 'admin-main-menu');
+                let result = await res.json();
+                if(result.status === 'success') {
+                    dynamicSettings = pkgData;
+                    updateUIWithDynamicSettings();
+                    tg.showAlert("✅ System Settings Saved!");
+                    goBack('admin-edit-pkg', 'admin-main-menu');
+                } else {
+                    tg.showAlert("❌ Unauthorized or failed.");
+                }
             } catch(e) {
-                tg.showAlert("❌ Failed to save. Check your connection.");
+                tg.showAlert("❌ Failed to save.");
             }
             btn.innerText = "💾 Save All Changes"; btn.disabled = false;
-        }
-
-        // Execute Telegram Action Clicks for Admin Tools
-        function sendAdminCmd(cmd) {
-            // Re-direct securely back to telegram bot to execute Python admin commands
-            tg.openTelegramLink(`https://t.me/${botUsername}?text=/admin_cmd%20${cmd}`);
-            tg.close();
         }
     </script>
 </body>
