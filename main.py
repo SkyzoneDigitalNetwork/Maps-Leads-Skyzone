@@ -24,7 +24,7 @@ from playwright.async_api import async_playwright
 import aiohttp
 from aiohttp import web
 
-# --- Load Env ---
+# --- Load Environment Variables ---
 load_dotenv()
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,13 +39,20 @@ FB_URL = os.environ.get('FIREBASE_DATABASE_URL')
 RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
 PORT = int(os.environ.get('PORT', '8080'))
 
-# WEB_APP_URL will automatically use Render's URL
-WEB_APP_URL = RENDER_URL if RENDER_URL else f"http://localhost:{PORT}"
+# Web App URL setup
+WEB_APP_URL = RENDER_URL if RENDER_URL else "http://localhost:8080"
 
 # --- Global State ---
 active_tasks = {} 
 recent_logs =[] 
 BOT_USERNAME = "" 
+
+# CORS Headers manually added to prevent aiohttp_cors error
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
 
 CATEGORIES =[
     "Restaurants", "IT Companies", "Hospitals", "Real Estate", 
@@ -104,7 +111,7 @@ async def post_init(app: Application):
     BOT_USERNAME = bot_info.username
     logger.info(f"🤖 Bot Username: @{BOT_USERNAME}")
 
-async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE):
+async def keep_alive_task(context: ContextTypes.DEFAULT_TYPE=None):
     if not RENDER_URL: return
     while True:
         try: requests.get(RENDER_URL, timeout=10)
@@ -143,8 +150,8 @@ async def send_log(bot, user_name, user_id, action):
         except: pass
 
     recent_logs.append(log_text)
-    # 🌟 NEW: Send emergency AI report immediately if an error occurs
-    if "Error" in action or "এরর" in action or "Executable doesn't exist" in action: 
+    # 🌟 IMMEDIATE AI ALERT FOR ANY ERROR
+    if "এরর" in action or "Error" in action or "Executable doesn't exist" in action or "❌" in action: 
         asyncio.create_task(analyze_with_ai(bot, is_error=True))
     elif len(recent_logs) >= 15: 
         asyncio.create_task(analyze_with_ai(bot, is_error=False))
@@ -156,7 +163,7 @@ async def extract_email(url):
                 if response.status == 200:
                     html = await response.text()
                     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', html)
-                    valid_emails =[e for e in emails if not any(x in e.lower() for x in['.png', '.jpg', 'sentry', 'example'])]
+                    valid_emails =[e for e in emails if not any(x in e.lower() for x in['.png', '.jpg', 'sentry', 'example', 'wix'])]
                     return valid_emails[0] if valid_emails else "N/A"
     except: pass
     return "N/A"
@@ -292,12 +299,12 @@ async def scraper_worker(query, user_id, user_name, bot):
                     
                     if ref.child(safe_key).get(): continue
                         
-                    # 🌟 NEW: Added Google Maps Link ('gmap_link': url)
+                    # 🌟 MAPS URL is saved here
                     lead_data = {
                         'name': name, 'rating': rating, 'total_reviews': total_reviews,
                         'stars_5': r5, 'stars_4': r4, 'stars_3': r3, 'stars_2': r2, 'stars_1': r1,
                         'phone': phone, 'email': email, 'website': website, 'address': address,
-                        'gmap_link': url, # Google Maps Business URL included
+                        'gmaps_url': url,  # Added Original Link
                         'query': query, 'date': datetime.now().isoformat(), 'is_deleted_by_user': False 
                     }
                     ref.child(safe_key).set(lead_data)
@@ -309,7 +316,7 @@ async def scraper_worker(query, user_id, user_name, bot):
             
     except Exception as e:
         await send_log(bot, user_name, user_id, f"❌ Error: {str(e)[:100]}")
-        try: await bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"❌ Scraping error. Please try again.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data='main_menu')]]))
+        try: await bot.edit_message_text(chat_id=user_id, message_id=status_msg.message_id, text=f"❌ Scraping error. Please try again.")
         except: pass
         if user_id in active_tasks: del active_tasks[user_id]
         return
@@ -331,13 +338,13 @@ async def scraper_worker(query, user_id, user_name, bot):
     if session_leads:
         si = io.StringIO()
         cw = csv.writer(si)
-        # 🌟 NEW: Added Google Maps Link column in the output CSV
-        cw.writerow(['Business Name', 'Rating', 'Total Reviews', '5-Star', '4-Star', '3-Star', '2-Star', '1-Star', 'Phone', 'Email', 'Website', 'Address', 'Google Maps Link', 'Query', 'Date'])
+        # 🌟 MAPS LINK COLUMN ADDED IN DOWNLOAD
+        cw.writerow(['Business Name', 'Rating', 'Total Reviews', '5-Star', '4-Star', '3-Star', '2-Star', '1-Star', 'Phone', 'Email', 'Website', 'Address', 'Maps Link', 'Query', 'Date'])
         for v in session_leads:
             cw.writerow([
                 v.get('name',''), v.get('rating',''), v.get('total_reviews',''),
                 v.get('stars_5',''), v.get('stars_4',''), v.get('stars_3',''), v.get('stars_2',''), v.get('stars_1',''),
-                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('address',''), v.get('gmap_link',''), v.get('query',''), v.get('date','')
+                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('address',''), v.get('gmaps_url', ''), v.get('query',''), v.get('date','')
             ])
         output = io.BytesIO(si.getvalue().encode('utf-8'))
         output.name = f"Report_{query.replace(' ', '_')}_{datetime.now().strftime('%H%M%S')}.csv"
@@ -407,7 +414,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uname = update.effective_user.first_name
     text = update.message.text.strip() if update.message else ""
     
-    # Handle incoming requests from Deep Linking / WebApp or other commands
     if text == '/start do_scrape':
         req = db.reference(f'pending_requests/{uid}').get()
         if req and req.get('action') == 'scrape':
@@ -448,15 +454,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_auth, sub_status = check_subscription(uid)
     if not is_auth:
         if sub_status == "not_found": 
-            # 🌟 NEW: Unauthorized User Request Permission System
-            btn = [[InlineKeyboardButton("📩 এডমিনের কাছে অনুমতি চান", callback_data='request_access')]]
-            await update.message.reply_text(
-                f"⛔ **আপনি অনুমোদিত নন!**\n\n"
-                f"আপনার Telegram UID: `{uid}`\n\n"
-                f"বটটি ব্যবহার করতে এডমিনের অনুমতি প্রয়োজন। নিচের বাটনে ক্লিক করে এডমিনকে রিকোয়েস্ট পাঠান।",
-                reply_markup=InlineKeyboardMarkup(btn),
-                parse_mode='Markdown'
-            )
+            # 🌟 NEW: Access Request Logic
+            btn = [[InlineKeyboardButton("📩 সেন্ড অ্যাক্সেস রিকোয়েস্ট (Send Request)", callback_data='req_access')]]
+            await update.message.reply_text(f"⛔ আপনি অনুমোদিত নন।\n\nআপনার User ID: `{uid}`\nঅ্যাডমিনের কাছ থেকে অনুমতি নিতে নিচের বাটনে ক্লিক করুন।", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(btn))
         elif sub_status == "expired": 
             await update.message.reply_text("⚠️ **আপনার অ্যাকাউন্টের মেয়াদ শেষ!**\n\nনতুন করে রিনিউ করতে বা প্যাকেজ দেখতে নিচের '🌐 ওয়েব অ্যাপ' বাটনে ক্লিক করুন।", reply_markup=get_expired_menu(uid))
         return
@@ -481,7 +481,7 @@ async def approve_sub_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             new_end = current_end + timedelta(days=days)
             user_ref.update({'sub_ends': new_end.isoformat()})
             await update.message.reply_text(f"✅ User {target_uid} extended by {days} days.")
-            await context.bot.send_message(chat_id=target_uid, text=f"🎉 **Congratulations!**\nYour payment is verified and your account is extended by {days} days.\nYou can now start working by sending /start.")
+            await context.bot.send_message(chat_id=target_uid, text=f"🎉 **Congratulations!**\nYour payment is verified and your account is extended by {days} days.\nYou can now start working.")
         else:
             await update.message.reply_text("❌ User not found.")
     except Exception as e:
@@ -494,32 +494,31 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try: await query.answer()
     except: pass 
+    
+    # 🌟 NEW: Track every button click
+    await send_log(context.bot, uname, uid, f"Button Click: {query.data}")
 
-    # 🌟 NEW: Access Request Logic for Unauthorized Users
-    if query.data == 'request_access':
-        admin_msg = f"🔔 **New Access Request!**\n\n👤 Name: {uname}\n🆔 UID: `{uid}`\n\nThis user is requesting permission to use the bot."
-        approve_btn = [[InlineKeyboardButton("✅ Approve (24h)", callback_data=f'quick_approve_{uid}')]]
-        await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, reply_markup=InlineKeyboardMarkup(approve_btn), parse_mode='Markdown')
-        await query.edit_message_text("✅ আপনার রিকোয়েস্ট এডমিনের কাছে পাঠানো হয়েছে। অনুমতি পেলে আপনাকে জানানো হবে।")
+    # 🌟 NEW: Handle Access Request for unregistered users
+    if query.data == 'req_access':
+        admin_msg = f"🔔 **New Access Request!**\n\n👤 **Name:** {uname}\n🆔 **UID:** `{uid}`\n\n✅ অনুমতি দিতে ক্লিক করুন:"
+        btn = [[InlineKeyboardButton("✅ 24h Trial দিন", callback_data=f'sa_add_trial_{uid}')]]
+        await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(btn))
+        await query.edit_message_text("✅ আপনার রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে। অনুগ্রহ করে অপেক্ষা করুন।")
         return
         
-    elif query.data.startswith('quick_approve_'):
+    elif query.data.startswith('sa_add_trial_'):
         if not is_super_admin(uid): return
-        target_uid = query.data.split('quick_approve_')[1]
-        trial_ends = (datetime.now() + timedelta(days=1)).isoformat() 
+        target_uid = query.data.split('sa_add_trial_')[1]
+        trial_ends = (datetime.now() + timedelta(days=1)).isoformat()
         db.reference(f'bot_users/{target_uid}').set({"name": "User", "sub_ends": trial_ends, "lt_searches": 0, "lt_leads": 0, "team_limit": 0, "team_added": 0})
-        await query.edit_message_text(f"✅ User `{target_uid}` approved for 24h.")
-        try: await context.bot.send_message(chat_id=target_uid, text="🎉 **অভিনন্দন!**\nএডমিন আপনাকে ২৪ ঘণ্টার জন্য বট ব্যবহারের অনুমতি দিয়েছেন।\n\nকমান্ড দিন: /start")
-        except: pass
+        await query.edit_message_text(f"✅ ইউজার `{target_uid}` কে 24h ট্রায়াল দেওয়া হয়েছে।")
+        await context.bot.send_message(chat_id=target_uid, text="🎉 অ্যাডমিন আপনার রিকোয়েস্ট অ্যাক্সেপ্ট করেছে! /start দিয়ে কাজ শুরু করুন।")
         return
 
     is_auth, sub_status = check_subscription(uid)
-    if not is_auth and query.data not in ['main_menu', 'refresh_bot']:
+    if not is_auth and query.data not in['main_menu', 'refresh_bot']:
         await query.edit_message_text("⚠️ **Your account has expired!**", reply_markup=get_expired_menu(uid))
         return
-
-    # 🌟 EVERY CLICK LOG TO GROUP CHAT
-    await send_log(context.bot, uname, uid, f"Button Clicked: {query.data}")
 
     if query.data == 'refresh_bot':
         if uid in active_tasks:
@@ -533,7 +532,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("🗺️ **Google Maps Scraper Dashboard**", reply_markup=get_main_menu(uid))
         return
 
-    # --- Target Setting ---
     if query.data == 'set_target':
         keyboard = []
         row =[]
@@ -541,29 +539,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             row.append(InlineKeyboardButton(cat, callback_data=f'cat_{cat}'))
             if len(row) == 2 or i == len(CATEGORIES) - 1:
                 keyboard.append(row)
-                row =[]
+                row = []
         keyboard.append([InlineKeyboardButton("✍️ Custom Category", callback_data='cat_custom')])
         keyboard.append([InlineKeyboardButton("🔙 Back", callback_data='main_menu')])
         await query.edit_message_text("📂 **First select a category:**", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    # 🌟 FIX: THIS WAS THE MISSING CATEGORY BLOCK YOU WERE FRUSTRATED ABOUT
+        
+    elif query.data == 'cat_custom':
+        context.user_data['awaiting_custom_cat'] = True
+        await query.message.reply_text("✍️ Send your custom category (e.g., Car Wash):")
+        
     elif query.data.startswith('cat_'):
         selected_cat = query.data.split('cat_')[1]
-        if selected_cat == 'custom':
-            context.user_data['awaiting_custom_cat'] = True
-            await query.message.reply_text("✍️ Send your custom category (e.g., Car Wash):")
-        else:
-            context.user_data['selected_category'] = selected_cat
-            context.user_data['awaiting_location'] = True
-            await query.message.reply_text(f"✅ Category: **{selected_cat}**\n🌍 **Now send the Location Name:**", parse_mode='Markdown')
+        context.user_data['selected_category'] = selected_cat
+        context.user_data['awaiting_location'] = True
+        await query.message.reply_text(f"✅ Category: **{selected_cat}**\n🌍 **Now send the Location Name:**")
 
     elif query.data == 'start_scraping':
         target = context.user_data.get('target_query')
         if not target: 
-            await query.message.reply_text("⚠️ Please set a target first using '🎯 Set Target' button.")
+            await query.message.reply_text("⚠️ আগে '🎯 টার্গেট সেট করুন' এ ক্লিক করে ক্যাটাগরি ও লোকেশন দিন।")
             return
         if uid in active_tasks: 
-            await query.message.reply_text("⚠️ You already have a task running!")
+            await query.message.reply_text("⚠️ আপনার একটি কাজ অলরেডি চলছে!")
             return
         task = asyncio.create_task(scraper_worker(target, uid, uname, context.bot))
         active_tasks[uid] = task
@@ -593,13 +590,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         si = io.StringIO()
         cw = csv.writer(si)
-        # 🌟 NEW: CSV contains 'Google Maps Link' column
-        cw.writerow(['Business Name', 'Rating', 'Total Reviews', '5-Star', '4-Star', '3-Star', '2-Star', '1-Star', 'Phone', 'Email', 'Website', 'Address', 'Google Maps Link', 'Query', 'Date'])
+        cw.writerow(['Business Name', 'Rating', 'Total Reviews', '5-Star', '4-Star', '3-Star', '2-Star', '1-Star', 'Phone', 'Email', 'Website', 'Address', 'Maps Link', 'Query', 'Date'])
         for key, v in active_leads.items():
             cw.writerow([
                 v.get('name',''), v.get('rating',''), v.get('total_reviews',''),
                 v.get('stars_5',''), v.get('stars_4',''), v.get('stars_3',''), v.get('stars_2',''), v.get('stars_1',''),
-                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('address',''), v.get('gmap_link',''), v.get('query',''), v.get('date','')
+                v.get('phone',''), v.get('email',''), v.get('website',''), v.get('address',''), v.get('gmaps_url', ''), v.get('query',''), v.get('date','')
             ])
         output = io.BytesIO(si.getvalue().encode('utf-8'))
         output.name = f"My_Leads_{datetime.now().strftime('%Y%m%d')}.csv"
@@ -687,7 +683,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📂 **Leads in Database:** {len(leads)}"
         )
 
-        btns = [[InlineKeyboardButton("⏳ Edit Time (+/- Days)", callback_data=f'sa_add_days_{target_uid}')],[InlineKeyboardButton("🗑️ Hard Delete Leads", callback_data=f'hard_del_{target_uid}')],[InlineKeyboardButton("❌ Remove User", callback_data=f'rm_usr_{target_uid}')],[InlineKeyboardButton("🔙 Back", callback_data='sa_view_users')]
+        btns = [[InlineKeyboardButton("⏳ Edit Time (+/- Days)", callback_data=f'sa_add_days_{target_uid}')],[InlineKeyboardButton("🗑️ Hard Delete Leads", callback_data=f'hard_del_{target_uid}')],[InlineKeyboardButton("❌ Remove User", callback_data=f'rm_usr_{target_uid}')],
+            [InlineKeyboardButton("🔙 Back", callback_data='sa_view_users')]
         ]
         await query.edit_message_text(profile_text, reply_markup=InlineKeyboardMarkup(btns), parse_mode='Markdown')
 
@@ -801,30 +798,25 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['awaiting_location'] = False
         
         keyboard = [[InlineKeyboardButton("🚀 Start Scraping", callback_data='start_scraping')],[InlineKeyboardButton("🔙 Back", callback_data='main_menu')]]
-        await update.message.reply_text(f"✅ **Target:** `{context.user_data['target_query']}`\nYou can start now.", parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text(f"✅ **Target:** `{context.user_data['target_query']}`\nYou can start now.", reply_markup=InlineKeyboardMarkup(keyboard))
 
-# --- Custom Backend API for Web App Configuration ---
-async def api_get_settings(request):
-    try:
-        settings = db.reference('web_settings').get() or {}
-        return web.json_response({"status": "success", "data": settings})
-    except Exception as e:
-        return web.json_response({"status": "error", "message": str(e)})
+# --- CORS & OPTIONS Preflight Handler for Web App Admin Panel ---
+async def preflight_handler(request):
+    return web.Response(headers=CORS_HEADERS)
 
-async def api_update_settings(request):
+# --- API ROUTES (For Admin Web App) ---
+async def api_admin_save_pkg(request):
     try:
         data = await request.json()
         uid = str(data.get('uid'))
-        if not is_super_admin(uid):
-            return web.json_response({"status": "error", "message": "Unauthorized"})
+        if not is_super_admin(uid): return web.json_response({"status": "unauthorized"}, headers=CORS_HEADERS)
         
-        settings_data = data.get('settings', {})
-        db.reference('web_settings').update(settings_data)
-        return web.json_response({"status": "success"})
+        db.reference('web_settings/packages').set(data.get('pkg_data'))
+        return web.json_response({"status": "success"}, headers=CORS_HEADERS)
     except Exception as e:
-        return web.json_response({"status": "error", "message": str(e)})
+        logger.error(f"API Pkg Save Error: {e}")
+        return web.json_response({"status": "error", "error": str(e)}, headers=CORS_HEADERS)
 
-# --- Application Startup ---
 async def main_async():
     app = Application.builder().token(TOKEN).build()
     
@@ -853,32 +845,20 @@ async def main_async():
             await app.update_queue.put(Update.de_json(data=data, bot=app.bot))
             return web.Response()
 
-        # HTML serving logic would go here normally, but since user requested GitHub Pages 
-        # structure, we omit serving the index.html from Python to let Github handle frontend.
-        # But we keep the APIs active so Github HTML can fetch them.
-
         web_app = web.Application()
-        import aiohttp_cors
-        cors = aiohttp_cors.setup(web_app, defaults={
-            "*": aiohttp_cors.ResourceOptions(
-                allow_credentials=True, expose_headers="*", allow_headers="*"
-            )
-        })
-        
-        web_app['bot_instance'] = app.bot 
-        
-        # Route definitions
         web_app.router.add_post(webhook_path, telegram_webhook)
-        # Add API routes for WebApp to communicate
-        cors.add(web_app.router.add_get("/api/get_settings", api_get_settings))
-        cors.add(web_app.router.add_post("/api/update_settings", api_update_settings))
+        
+        # Admin API Routes (Handled cleanly with pure headers, no aiohttp_cors needed)
+        web_app.router.add_options("/api/admin/save_pkg", preflight_handler)
+        web_app.router.add_post("/api/admin/save_pkg", api_admin_save_pkg)
         
         runner = web.AppRunner(web_app)
         await runner.setup()
         site = web.TCPSite(runner, "0.0.0.0", PORT)
         await site.start()
         
-        logger.info(f"🌐 Backend APIs running on port {PORT}")
+        logger.info(f"🌐 Server hosting APIs on port {PORT}")
+        
         await app.start()
         await asyncio.Event().wait()
     else:
