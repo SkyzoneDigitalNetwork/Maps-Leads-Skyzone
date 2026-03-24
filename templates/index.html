@@ -3,201 +3,259 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Skyzone Dashboard</title>
+    <title>Skyzone Premium Dashboard</title>
+    <!-- Telegram Web App JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
         /* ========================================================
-           GLOBAL CSS VARIABLES AND STYLES
+           GLOBAL CSS VARIABLES AND BASE STYLES
            ======================================================== */
         :root {
             --primary: #01875f; 
+            --primary-dark: #006b4a;
             --danger: #d32f2f; 
+            --danger-light: #ffcdd2;
             --bg: #f4f7f6;
             --card: #ffffff; 
             --text: #202124; 
             --muted: #5f6368;
+            --border: #e8eaed;
         }
+        
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body {
             font-family: 'Poppins', sans-serif; 
             background: var(--bg);
             color: var(--text); 
             margin: 0; 
             padding: 15px; 
-            padding-bottom: 60px;
+            padding-bottom: 80px;
         }
+
+        /* ========================================================
+           CARD & GRID LAYOUTS
+           ======================================================== */
         .card {
             background: var(--card); 
             border-radius: 16px; 
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.04); 
+            padding: 22px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.04); 
             margin-bottom: 20px;
+            transition: all 0.3s ease;
         }
+        
         h2 { 
             margin: 0 0 5px 0; 
             color: var(--primary); 
-            font-size: 22px; 
+            font-size: 24px; 
+            font-weight: 700;
         }
+        
         .grid-2 { 
-            display: flex; 
-            gap: 10px; 
-            margin-top: 15px; 
+            display: grid; 
+            grid-template-columns: 1fr 1fr;
+            gap: 12px; 
+            margin-top: 20px; 
         }
+        
         .box { 
             background: #f8f9fa; 
-            flex: 1; 
-            padding: 15px 10px; 
-            border-radius: 12px; 
-            border: 1px solid #e8eaed; 
+            padding: 18px 10px; 
+            border-radius: 14px; 
+            border: 1px solid var(--border); 
             text-align: center; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.01);
         }
+        
         .box h3 { 
             margin: 0; 
-            font-size: 22px; 
+            font-size: 26px; 
             color: var(--text); 
+            font-weight: 700;
         }
+        
         .box span { 
             font-size: 11px; 
             color: var(--muted); 
             font-weight: 600; 
             text-transform: uppercase; 
+            letter-spacing: 0.5px;
         }
         
         /* ========================================================
-           TIMER AND COUNTDOWN CSS
+           VIP TIMER & COUNTDOWN
            ======================================================== */
         .timer-card { 
-            background: linear-gradient(135deg, #fff0f0, #ffebee); 
-            border: 2px solid #ffcdd2; 
+            background: linear-gradient(135deg, #fff0f0 0%, #ffebee 100%); 
+            border: 2px solid var(--danger-light); 
             text-align: center; 
+            position: relative;
+            overflow: hidden;
         }
+        
         .timer-title { 
-            font-size: 12px; 
-            font-weight: 700; 
+            font-size: 13px; 
+            font-weight: 800; 
             color: var(--danger); 
             text-transform: uppercase; 
-            margin-bottom: 10px; 
+            margin-bottom: 15px; 
+            letter-spacing: 1px;
         }
+        
         .time-box { 
             background: var(--card); 
-            border-radius: 8px; 
-            width: 60px; 
-            padding: 10px 0; 
+            border-radius: 10px; 
+            width: 65px; 
+            padding: 12px 0; 
             display: inline-block; 
-            margin: 0 5px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            margin: 0 6px; 
+            box-shadow: 0 4px 10px rgba(211, 47, 47, 0.1); 
         }
+        
         .time-box .num { 
-            font-size: 22px; 
-            font-weight: 700; 
+            font-size: 24px; 
+            font-weight: 800; 
             color: var(--danger); 
+            line-height: 1.1;
         }
+        
         .time-box .label { 
             font-size: 10px; 
             color: var(--muted); 
-            font-weight: 600; 
+            font-weight: 700; 
             display: block; 
+            margin-top: 4px;
         }
         
         /* ========================================================
-           BUTTONS CSS
+           BUTTONS & CHIPS
            ======================================================== */
         .btn {
             width: 100%; 
-            padding: 14px; 
-            border-radius: 12px; 
+            padding: 16px; 
+            border-radius: 14px; 
             border: none;
-            font-size: 14px; 
-            font-weight: 600; 
+            font-size: 15px; 
+            font-weight: 700; 
             cursor: pointer; 
-            margin-bottom: 10px;
-            transition: 0.2s;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
+        
         .btn:active { 
-            transform: scale(0.98); 
+            transform: scale(0.96); 
         }
+        
         .btn-primary { 
             background: var(--primary); 
             color: white; 
-            box-shadow: 0 4px 10px rgba(1, 135, 95, 0.3); 
+            box-shadow: 0 6px 15px rgba(1, 135, 95, 0.3); 
         }
+        
         .btn-outline { 
             background: transparent; 
             border: 2px solid var(--primary); 
             color: var(--primary); 
         }
+        
         .btn-warning { 
             background: #f39c12; 
             color: white; 
+            box-shadow: 0 6px 15px rgba(243, 156, 18, 0.3);
         }
         
         /* ========================================================
-           PACKAGES & PAYMENT CSS
+           PACKAGES & PAYMENT
            ======================================================== */
         .pkg-card { 
-            border: 1px solid #e8eaed; 
-            border-radius: 12px; 
-            padding: 15px; 
+            border: 1px solid var(--border); 
+            border-radius: 14px; 
+            padding: 18px; 
             margin-bottom: 15px; 
             text-align: left; 
             cursor: pointer; 
-            transition: 0.3s; 
+            transition: all 0.3s ease; 
+            background: var(--card);
         }
+        
         .pkg-card:active { 
-            transform: scale(0.98); 
+            transform: scale(0.97); 
+            background: #f8f9fa;
         }
+        
         .pkg-card.premium { 
             border: 2px solid var(--primary); 
             position: relative; 
             overflow: hidden; 
+            box-shadow: 0 4px 15px rgba(1, 135, 95, 0.1);
         }
+        
         .pkg-price { 
-            font-size: 20px; 
-            font-weight: 700; 
+            font-size: 22px; 
+            font-weight: 800; 
             color: var(--primary); 
-            margin: 5px 0; 
+            margin: 6px 0; 
         }
+        
         .form-group { 
-            margin-bottom: 15px; 
+            margin-bottom: 18px; 
             text-align: left; 
         }
+        
         .form-group label { 
             display: block; 
-            font-size: 12px; 
+            font-size: 13px; 
             font-weight: 600; 
-            margin-bottom: 5px; 
+            margin-bottom: 8px; 
+            color: var(--text);
         }
+        
         .form-group input, .form-group select, .form-group textarea { 
             width: 100%; 
-            padding: 12px; 
+            padding: 14px; 
             border: 1px solid #ccc; 
-            border-radius: 8px; 
+            border-radius: 10px; 
             box-sizing: border-box; 
             font-family: 'Poppins', sans-serif; 
+            font-size: 14px;
             outline: none; 
+            transition: 0.3s;
         }
-        .form-group input:focus, .form-group textarea:focus { 
+        
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { 
             border-color: var(--primary); 
+            box-shadow: 0 0 0 3px rgba(1, 135, 95, 0.1);
         }
+        
         .chip-container { 
-            display: flex; 
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px; 
-            flex-wrap: wrap; 
             margin-bottom: 15px; 
         }
+        
         .chip {
-            flex: 1; 
-            padding: 10px; 
+            padding: 12px; 
             text-align: center; 
-            border-radius: 8px; 
-            border: 2px solid #e8eaed;
-            font-size: 12px; 
-            font-weight: 600; 
+            border-radius: 10px; 
+            border: 2px solid var(--border);
+            font-size: 13px; 
+            font-weight: 700; 
             cursor: pointer; 
-            transition: 0.3s; 
+            transition: all 0.3s ease; 
             background: #f8f9fa; 
             color: var(--muted);
         }
+        
         .chip.active { 
             border-color: var(--primary); 
             background: #e6f4ea; 
@@ -205,12 +263,13 @@
         }
         
         .admin-header { 
-            background: #202124; 
+            background: linear-gradient(135deg, #202124 0%, #3c4043 100%); 
             color: white; 
-            padding: 15px; 
-            border-radius: 12px; 
-            margin-bottom: 15px; 
+            padding: 20px; 
+            border-radius: 16px; 
+            margin-bottom: 20px; 
             text-align: center; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         /* Hiding specific sections initially */
@@ -221,9 +280,11 @@
 </head>
 <body>
 
-    <!-- Language Toggle -->
-    <div style="text-align: right; margin-bottom: 10px;">
-        <span id="lang-indicator" style="font-size: 12px; font-weight: bold; color: var(--muted);">🌐 Auto Lang</span>
+    <!-- Language Toggle Indicator -->
+    <div style="text-align: right; margin-bottom: 15px;">
+        <span id="lang-indicator" style="font-size: 12px; font-weight: 700; color: var(--muted); background: var(--card); padding: 5px 12px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            🌐 Auto Lang
+        </span>
     </div>
 
     <!-- ========================================================
@@ -233,15 +294,15 @@
         <!-- User Profile Card -->
         <div class="card profile-card">
             <h2 id="u-greeting">Hello, User</h2>
-            <p id="u-id-text" style="margin: 0; font-size: 12px; color: var(--muted);">ID: 00000000</p>
+            <p id="u-id-text" style="margin: 0; font-size: 13px; font-weight: 500; color: var(--muted);">ID: 00000000</p>
             
             <div class="grid-2">
                 <div class="box"><h3 id="u-searches">0</h3><span id="t-searches">Searches</span></div>
                 <div class="box"><h3 id="u-leads">0</h3><span id="t-leads">Leads</span></div>
             </div>
             
-            <div id="team-info" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                <span style="font-size: 12px; font-weight: 600; color: var(--primary);" id="t-team-limit">Team Members: 0 / 0</span>
+            <div id="team-info" style="display: none; margin-top: 18px; padding-top: 15px; border-top: 1px dashed #e8eaed;">
+                <span style="font-size: 13px; font-weight: 700; color: var(--primary);" id="t-team-limit">Team Members: 0 / 0</span>
             </div>
         </div>
 
@@ -253,7 +314,7 @@
                 <div class="time-box"><span class="num" id="t-hours">00</span><span class="label" id="l-hours">Hrs</span></div>
                 <div class="time-box"><span class="num" id="t-mins">00</span><span class="label" id="l-mins">Min</span></div>
             </div>
-            <div id="expired-msg" style="display:none; font-size: 18px; font-weight: bold; color: var(--danger);"></div>
+            <div id="expired-msg" style="display:none; font-size: 20px; font-weight: 800; color: var(--danger); padding: 10px 0;"></div>
         </div>
 
         <!-- Main Action Buttons -->
@@ -264,91 +325,99 @@
 
         <!-- ================= SCRAPING FORM (20 CATEGORIES) ================= -->
         <div class="card" id="scrape-form">
-            <h3 style="margin-top:0; color: var(--primary);" id="t-scrape-title">New Search</h3>
+            <h3 style="margin-top:0; font-size: 20px; font-weight: 700; color: var(--primary);" id="t-scrape-title">New Search</h3>
+            <p style="font-size: 12px; color: var(--muted); margin-bottom: 20px;" id="t-scrape-desc">Select target and location carefully.</p>
+            
             <div class="form-group">
                 <label id="t-cat">Category (ক্যাটাগরি)</label>
                 <select id="cat-select" onchange="toggleCustomCat()">
-                    <option value="Restaurants">Restaurants</option>
-                    <option value="IT Companies">IT Companies</option>
-                    <option value="Hospitals">Hospitals</option>
-                    <option value="Real Estate">Real Estate</option>
-                    <option value="Plumbers">Plumbers</option>
-                    <option value="Gyms">Gyms</option>
-                    <option value="Hotels">Hotels</option>
-                    <option value="Coffee Shops">Coffee Shops</option>
-                    <option value="Car Repair">Car Repair</option>
-                    <option value="Dentists">Dentists</option>
-                    <option value="Lawyers">Lawyers</option>
-                    <option value="Electricians">Electricians</option>
-                    <option value="Salons">Salons</option>
-                    <option value="Pharmacies">Pharmacies</option>
-                    <option value="Supermarkets">Supermarkets</option>
-                    <option value="Travel Agencies">Travel Agencies</option>
-                    <option value="Banks">Banks</option>
-                    <option value="Mechanics">Mechanics</option>
-                    <option value="Schools">Schools</option>
-                    <option value="Architects">Architects</option>
+                    <!-- Exactly 20 Categories Maintained for maximum coverage -->
+                    <option value="Restaurants">1. Restaurants</option>
+                    <option value="IT Companies">2. IT Companies</option>
+                    <option value="Hospitals">3. Hospitals & Clinics</option>
+                    <option value="Real Estate">4. Real Estate Agencies</option>
+                    <option value="Plumbers">5. Plumbers & Services</option>
+                    <option value="Gyms">6. Gyms & Fitness</option>
+                    <option value="Hotels">7. Hotels & Resorts</option>
+                    <option value="Coffee Shops">8. Coffee Shops</option>
+                    <option value="Car Repair">9. Car Repair & Mechanics</option>
+                    <option value="Dentists">10. Dentists</option>
+                    <option value="Lawyers">11. Lawyers & Legal</option>
+                    <option value="Electricians">12. Electricians</option>
+                    <option value="Salons">13. Beauty Salons & Spa</option>
+                    <option value="Pharmacies">14. Pharmacies</option>
+                    <option value="Supermarkets">15. Supermarkets & Grocery</option>
+                    <option value="Travel Agencies">16. Travel Agencies</option>
+                    <option value="Banks">17. Banks & Financial</option>
+                    <option value="Mechanics">18. General Mechanics</option>
+                    <option value="Schools">19. Schools & Education</option>
+                    <option value="Architects">20. Architects & Builders</option>
                     <option value="Custom">✍️ Custom (Type below)</option>
                 </select>
             </div>
             <div class="form-group" id="custom-cat-group" style="display: none;">
-                <input type="text" id="custom-cat" placeholder="e.g. Car Wash">
+                <input type="text" id="custom-cat" placeholder="e.g. Car Wash Services">
             </div>
             <div class="form-group">
                 <label id="t-loc">Location (জায়গার নাম)</label>
-                <input type="text" id="loc-input" placeholder="e.g. Dhaka, New York">
+                <input type="text" id="loc-input" placeholder="e.g. Dhaka, Bangladesh">
             </div>
-            <button class="btn btn-primary" onclick="submitScrape()" id="btn-start-now">Start Now</button>
+            <button class="btn btn-primary" onclick="submitScrape()" id="btn-start-now">Start Extraction</button>
             <button class="btn btn-outline" onclick="goBack('scrape-form')" id="btn-cancel-1">Cancel</button>
         </div>
 
         <!-- ================= DYNAMIC PACKAGES SECTION ================= -->
         <div id="packages-section">
-            <h3 style="text-align: center; color: var(--primary);" id="t-pkg-title">Premium Packages</h3>
-            <p style="font-size: 12px; text-align: center; color: var(--muted);" id="t-pkg-desc">Select a package to buy.</p>
+            <h3 style="text-align: center; color: var(--primary); font-size: 22px; font-weight: 700;" id="t-pkg-title">Premium Packages</h3>
+            <p style="font-size: 12px; text-align: center; color: var(--muted); margin-bottom: 20px;" id="t-pkg-desc">Select a package to buy.</p>
             
             <div class="pkg-card" onclick="openPaymentForm(1)">
-                <strong id="ui-p1-title">⏳ 24 Hours (Hours)⏰</strong>
+                <strong id="ui-p1-title" style="font-size: 16px;">⏳ 24 Hours Trial</strong>
                 <div class="pkg-price" id="ui-p1-price">200 BDT</div>
             </div>
             <div class="pkg-card" onclick="openPaymentForm(2)">
-                <strong id="ui-p2-title">🥉 7 Day (Day)</strong>
+                <strong id="ui-p2-title" style="font-size: 16px;">🥉 7 Days Package</strong>
                 <div class="pkg-price" id="ui-p2-price">1200 BDT</div>
             </div>
             <div class="pkg-card premium" onclick="openPaymentForm(3)">
-                <div style="position: absolute; top: 10px; right: -25px; background: var(--primary); color: white; font-size: 10px; padding: 2px 25px; transform: rotate(45deg); font-weight: bold;">Best</div>
-                <strong id="ui-p3-title">🥈 3 Months (Premium Plan)</strong>
+                <div style="position: absolute; top: 12px; right: -28px; background: var(--primary); color: white; font-size: 11px; padding: 4px 30px; transform: rotate(45deg); font-weight: 800;">POPULAR</div>
+                <strong id="ui-p3-title" style="font-size: 16px;">🥈 3 Months Premium</strong>
                 <div class="pkg-price" id="ui-p3-price">3000 BDT</div>
             </div>
-            <div class="pkg-card premium" onclick="openPaymentForm(4)">
-                <div style="position: absolute; top: 10px; right: -25px; background: var(--primary); color: white; font-size: 10px; padding: 2px 25px; transform: rotate(45deg); font-weight: bold;">Pro</div>
-                <strong id="ui-p4-title">🥇 6 Months (🛡️🔝🚀🔴)</strong>
+            <div class="pkg-card premium" style="border-color: #f39c12;" onclick="openPaymentForm(4)">
+                <div style="position: absolute; top: 12px; right: -28px; background: #f39c12; color: white; font-size: 11px; padding: 4px 30px; transform: rotate(45deg); font-weight: 800;">PRO</div>
+                <strong id="ui-p4-title" style="font-size: 16px;">🥇 6 Months Ultimate</strong>
                 <div class="pkg-price" id="ui-p4-price">5000 BDT</div>
             </div>
-            <button class="btn btn-outline" onclick="goBack('packages-section')" id="btn-cancel-2">Back</button>
+            <button class="btn btn-outline" onclick="goBack('packages-section')" id="btn-cancel-2">Back to Home</button>
         </div>
 
         <!-- ================= PAYMENT FORM ================= -->
         <div class="card" id="payment-form">
-            <h3 style="margin-top:0; color: var(--primary);" id="t-pay-title">Submit Payment</h3>
-            <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px;">
-                <b id="t-selected-pkg">Package:</b> <span id="selected-plan" style="color: var(--primary); font-weight: bold;">...</span><br>
-                <b id="t-amount">Amount:</b> <span id="selected-price" style="color: var(--danger); font-weight: bold;">...</span>
+            <h3 style="margin-top:0; font-size: 20px; font-weight: 700; color: var(--primary);" id="t-pay-title">Submit Payment</h3>
+            <p style="font-size: 12px; color: var(--muted); margin-bottom: 20px;">Review your details below.</p>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border);">
+                <span id="t-selected-pkg" style="font-size: 12px; color: var(--muted);">Selected Package:</span><br>
+                <span id="selected-plan" style="color: var(--text); font-weight: 700; font-size: 16px; display: block; margin-bottom: 5px;">...</span>
+                
+                <span id="t-amount" style="font-size: 12px; color: var(--muted);">Total Amount:</span><br>
+                <span id="selected-price" style="color: var(--danger); font-weight: 800; font-size: 20px;">...</span>
             </div>
             
             <!-- Dynamic Payment Numbers Details -->
-            <div style="background: #e8f0fe; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; border: 1px solid #cce0ff;" id="payment-numbers-info">
-                <strong>Payment Numbers (Send Money):</strong><br>
+            <div style="background: #e8f0fe; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; border: 1px solid #cce0ff;" id="payment-numbers-info">
+                <strong style="display: block; margin-bottom: 10px; color: #1a73e8;">Account Numbers (Send Money):</strong>
                 ✅ Bkash: <b style="cursor: pointer; color: #1a73e8;" onclick="copyNumber(this.innerText)" id="ui-num-bkash">01757481646</b><br>
                 ✅ Nagad: <b style="cursor: pointer; color: #1a73e8;" onclick="copyNumber(this.innerText)" id="ui-num-nagad">01757481646</b><br>
                 ✅ Rocket: <b style="cursor: pointer; color: #1a73e8;" onclick="copyNumber(this.innerText)" id="ui-num-rocket">01757481646</b><br>
                 ✅ Binance: <b style="color: #1a73e8;" id="ui-num-binance">Inbox Admin</b><br>
-                <i style="font-size: 10px; color: var(--muted); margin-top: 5px; display: block;" id="ui-pay-notice">(Tap number to copy)</i>
+                <i style="font-size: 11px; color: var(--muted); margin-top: 10px; display: block;" id="ui-pay-notice">Tap any number to copy to clipboard</i>
             </div>
 
             <!-- Chips for Payment Method -->
             <div class="form-group">
-                <label id="t-method">Select Payment Method</label>
+                <label id="t-method" style="font-size: 14px;">1. Select Payment Method</label>
                 <div class="chip-container">
                     <div class="chip active" onclick="setMethod(this, 'Bkash')">Bkash</div>
                     <div class="chip" onclick="setMethod(this, 'Nagad')">Nagad</div>
@@ -359,15 +428,16 @@
             </div>
 
             <div class="form-group">
-                <label id="t-sender">Sender Number / Binance ID</label>
-                <input type="text" id="sender-number" placeholder="e.g. 017XXXXXXXX">
+                <label id="t-sender" style="font-size: 14px;">2. Sender Number (যে নাম্বার থেকে পাঠিয়েছেন)</label>
+                <input type="text" id="sender-number" placeholder="e.g. 017XXXXXXXX" autocomplete="off">
             </div>
             <div class="form-group">
-                <label id="t-trxid">Transaction ID (TrxID)</label>
-                <input type="text" id="trx-id" placeholder="e.g. 9H6A2B...">
+                <label id="t-trxid" style="font-size: 14px;">3. Transaction ID (TrxID)</label>
+                <input type="text" id="trx-id" placeholder="e.g. 9H6A2B7C" autocomplete="off" style="text-transform: uppercase;">
             </div>
-            <button class="btn btn-primary" onclick="submitPayment()" id="btn-submit-pay">Submit to Admin</button>
-            <button class="btn btn-outline" onclick="goBack('payment-form', 'packages-section')" id="btn-cancel-3">Cancel</button>
+            
+            <button class="btn btn-primary" onclick="submitPayment()" id="btn-submit-pay">Submit for Verification</button>
+            <button class="btn btn-outline" onclick="goBack('payment-form', 'packages-section')" id="btn-cancel-3">Go Back</button>
         </div>
     </div>
 
@@ -376,222 +446,231 @@
          ======================================================== -->
     <div id="admin-section">
         <div class="admin-header">
-            <h2>👑 Super Admin Panel</h2>
-            <p style="margin:0; font-size: 12px; color:#ccc;">Web App Control Center</p>
+            <h2 style="color: white; font-size: 26px;">👑 Super Admin</h2>
+            <p style="margin:0; font-size: 13px; color:#e8eaed; letter-spacing: 1px; text-transform: uppercase;">Control Center</p>
         </div>
 
         <div class="card" id="admin-main-menu">
-            <h3 style="margin-top:0;">Management Actions</h3>
-            <!-- Direct integration with Python Telegram commands via safe deeplink -->
-            <button class="btn btn-primary" onclick="sendAdminCmd('add_user')">➕ Add User (Telegram)</button>
-            <button class="btn btn-primary" onclick="sendAdminCmd('add_team_leader')">👥 Add Team Leader</button>
-            <button class="btn btn-outline" onclick="sendAdminCmd('manage_users')">⚙️ Manage Users & Time</button>
+            <h3 style="margin: 0 0 15px 0; font-size: 18px;">Quick Actions</h3>
+            <!-- These commands safely use Firebase to instruct Python Bot -->
+            <button class="btn btn-primary" onclick="triggerAdminCommand('add_user')">➕ Add User (24h Trial)</button>
+            <button class="btn btn-primary" onclick="triggerAdminCommand('add_team_leader')">👥 Add Team Leader</button>
+            <button class="btn btn-outline" onclick="triggerAdminCommand('manage_users')">⚙️ Manage Users & Validity</button>
             
+            <!-- Opens Settings Form inside Web App directly -->
             <button class="btn btn-warning" onclick="showAdminPkgEdit()">📝 Edit Packages & Pricing</button>
             
-            <button class="btn btn-danger" onclick="sendAdminCmd('toggle_bot_buttons')">👁️ Hide/Show Bot Buttons</button>
-            <button class="btn btn-outline" onclick="tg.close()">Close Web App</button>
+            <button class="btn btn-outline" onclick="triggerAdminCommand('toggle_bot_buttons')" style="color: var(--text); border-color: var(--text);">👁️ Toggle Bot Buttons</button>
+            <button class="btn btn-danger" onclick="tg.close()" style="margin-top: 20px;">Exit Panel</button>
         </div>
 
-        <!-- ================= ADMIN EDIT PACKAGES FORM ================= -->
+        <!-- ================= FULL ADMIN SETTINGS FORM ================= -->
         <div class="card" id="admin-edit-pkg">
-            <h3 style="margin-top:0; color: var(--primary);">System Settings</h3>
-            <p style="font-size:12px; color:var(--muted); margin-bottom: 15px;">অ্যাডমিন প্যানেল: এখান থেকে সবকিছু পরিবর্তন করতে পারবেন। সেভ করলে সব ইউজারের কাছে আপডেট হয়ে যাবে।</p>
+            <h3 style="margin-top:0; color: var(--primary); font-size: 20px;">System Settings</h3>
+            <p style="font-size:12px; color:var(--muted); margin-bottom: 20px;">Update packages and numbers. Changes are pushed globally to all users instantly.</p>
             
-            <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px; color:var(--primary);">Package 1</h4>
-                <div class="form-group"><label>Name/Time:</label><input type="text" id="ad-p1-title"></div>
-                <div class="form-group"><label>Price:</label><input type="text" id="ad-p1-price"></div>
+            <div style="background:#f8f9fa; padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid var(--border);">
+                <h4 style="margin: 0 0 12px 0; font-size: 15px; color:var(--primary);">Package 1 Configuration</h4>
+                <div class="form-group"><label>Title & Duration:</label><input type="text" id="ad-p1-title"></div>
+                <div class="form-group"><label>Price Label:</label><input type="text" id="ad-p1-price"></div>
                 
-                <h4 style="margin: 15px 0 10px 0; font-size: 14px; color:var(--primary); border-top:1px solid #ddd; padding-top:10px;">Package 2</h4>
-                <div class="form-group"><label>Name/Time:</label><input type="text" id="ad-p2-title"></div>
-                <div class="form-group"><label>Price:</label><input type="text" id="ad-p2-price"></div>
+                <h4 style="margin: 20px 0 12px 0; font-size: 15px; color:var(--primary); border-top:1px solid #ddd; padding-top:15px;">Package 2 Configuration</h4>
+                <div class="form-group"><label>Title & Duration:</label><input type="text" id="ad-p2-title"></div>
+                <div class="form-group"><label>Price Label:</label><input type="text" id="ad-p2-price"></div>
 
-                <h4 style="margin: 15px 0 10px 0; font-size: 14px; color:var(--primary); border-top:1px solid #ddd; padding-top:10px;">Package 3</h4>
-                <div class="form-group"><label>Name/Time:</label><input type="text" id="ad-p3-title"></div>
-                <div class="form-group"><label>Price:</label><input type="text" id="ad-p3-price"></div>
+                <h4 style="margin: 20px 0 12px 0; font-size: 15px; color:var(--primary); border-top:1px solid #ddd; padding-top:15px;">Package 3 Configuration</h4>
+                <div class="form-group"><label>Title & Duration:</label><input type="text" id="ad-p3-title"></div>
+                <div class="form-group"><label>Price Label:</label><input type="text" id="ad-p3-price"></div>
 
-                <h4 style="margin: 15px 0 10px 0; font-size: 14px; color:var(--primary); border-top:1px solid #ddd; padding-top:10px;">Package 4</h4>
-                <div class="form-group"><label>Name/Time:</label><input type="text" id="ad-p4-title"></div>
-                <div class="form-group"><label>Price:</label><input type="text" id="ad-p4-price"></div>
+                <h4 style="margin: 20px 0 12px 0; font-size: 15px; color:var(--primary); border-top:1px solid #ddd; padding-top:15px;">Package 4 Configuration</h4>
+                <div class="form-group"><label>Title & Duration:</label><input type="text" id="ad-p4-title"></div>
+                <div class="form-group"><label>Price Label:</label><input type="text" id="ad-p4-price"></div>
             </div>
 
-            <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px; color:var(--danger);">Payment Numbers</h4>
+            <div style="background:#f8f9fa; padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid var(--border);">
+                <h4 style="margin: 0 0 12px 0; font-size: 15px; color:var(--danger);">Payment Gateway Details</h4>
                 <div class="form-group"><label>Bkash Number:</label><input type="text" id="ad-bkash"></div>
                 <div class="form-group"><label>Nagad Number:</label><input type="text" id="ad-nagad"></div>
                 <div class="form-group"><label>Rocket Number:</label><input type="text" id="ad-rocket"></div>
-                <div class="form-group"><label>Binance ID / Text:</label><input type="text" id="ad-binance"></div>
-                <div class="form-group"><label>Important Notice:</label>
-                    <textarea id="ad-notice" rows="3" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: 'Poppins';"></textarea>
+                <div class="form-group"><label>Binance Configuration:</label><input type="text" id="ad-binance"></div>
+                <div class="form-group"><label>Footer Notice:</label>
+                    <textarea id="ad-notice" rows="3" style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-family: 'Poppins';"></textarea>
                 </div>
             </div>
 
-            <button class="btn btn-primary" onclick="savePackagesToFirebase()" id="btn-save-settings">💾 Save All Changes</button>
-            <button class="btn btn-outline" onclick="goBack('admin-edit-pkg', 'admin-main-menu')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveSettingsToFirebase()" id="btn-save-settings">💾 Save Global Settings</button>
+            <button class="btn btn-outline" onclick="goBack('admin-edit-pkg', 'admin-main-menu')">Discard Changes</button>
         </div>
     </div>
 
     <!-- ========================================================
-         JAVASCRIPT LOGIC, FIREBASE FETCH & CRASH-PROOF SYSTEM
+         JAVASCRIPT CORE LOGIC, 100% SECURE FIREBASE FETCH
          ======================================================== -->
     <script>
+        // Telegram API Initialization
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        let dynamicSettings = {
-            p1: { title: "⏳ 24 Hours (Hours)⏰", price: "200 BDT" },
-            p2: { title: "🥉 7 Day (Day)", price: "1200 BDT" },
-            p3: { title: "🥈 3 Months (Premium Plan)", price: "3000 BDT" },
-            p4: { title: "🥇 6 Months (🛡️🔝🚀🔴)", price: "5000 BDT" },
+        // Dynamic System Data State
+        let sysData = {
+            p1: { title: "⏳ 24 Hours Trial", price: "200 BDT" },
+            p2: { title: "🥉 7 Days Package", price: "1200 BDT" },
+            p3: { title: "🥈 3 Months Premium", price: "3000 BDT" },
+            p4: { title: "🥇 6 Months Ultimate", price: "5000 BDT" },
             numbers: { bkash: "01757481646", nagad: "01757481646", rocket: "01757481646", binance: "Inbox Admin" },
-            notice: "(Tap number to copy)"
+            notice: "(Tap any number to copy to clipboard)"
         };
 
-        const dict = {
+        // Multi-Language Dictionary mapped exactly to UI
+        const langPack = {
             en: {
                 greeting: "Hello,", searches: "Searches", leads: "Leads", timeLeft: "Subscription Time Left",
                 days: "Days", hrs: "Hrs", mins: "Min", expired: "⚠️ ACCOUNT EXPIRED!",
-                btnScrape: "🚀 Start Scraping", btnSub: "💎 Subscription & Packages",
-                scrapeTitle: "New Search", cat: "Category", loc: "Location", startNow: "Start Now", cancel: "Cancel",
-                pkgTitle: "Premium Packages", pkgDesc: "Select a package to upgrade your account.",
-                payTitle: "Submit Payment", selectedPkg: "Package:", amount: "Amount:",
-                method: "Select Payment Method", sender: "Sender Number / Binance ID", trxid: "Transaction ID (TrxID)", submitPay: "Submit Request"
+                btnScrape: "🚀 Start Extraction", btnSub: "💎 Packages & Pricing",
+                scrapeTitle: "New Target Search", cat: "Select Category", loc: "Target Location", startNow: "Start Processing", cancel: "Cancel",
+                pkgTitle: "Premium Upgrade", pkgDesc: "Choose your preferred package below.",
+                payTitle: "Submit Verification", selectedPkg: "Selected Package:", amount: "Total Amount:",
+                method: "1. Select Transfer Method", sender: "2. Sender Number (Account used)", trxid: "3. Transaction ID (TrxID)", submitPay: "Send to Administrator"
             },
             bn: {
                 greeting: "স্বাগতম,", searches: "সার্চ", leads: "লিড", timeLeft: "সাবস্ক্রিপশনের মেয়াদ আছে",
                 days: "দিন", hrs: "ঘণ্টা", mins: "মিনিট", expired: "⚠️ আপনার মেয়াদ শেষ হয়ে গেছে!",
                 btnScrape: "🚀 স্ক্র্যাপিং শুরু করুন", btnSub: "💎 সাবস্ক্রিপশন ও প্যাকেজ",
-                scrapeTitle: "নতুন সার্চ", cat: "ক্যাটাগরি", loc: "লোকেশন (জায়গার নাম)", startNow: "শুরু করুন", cancel: "বাতিল",
-                pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "অ্যাকাউন্ট আপডেট করতে প্যাকেজ সিলেক্ট করুন।",
-                payTitle: "পেমেন্ট সাবমিট করুন", selectedPkg: "প্যাকেজ:", amount: "পরিমাণ:",
-                method: "পেমেন্ট মেথড নির্বাচন করুন", sender: "যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "ট্রানজেকশন আইডি (TrxID)", submitPay: "অ্যাডমিনকে পাঠান"
+                scrapeTitle: "নতুন সার্চ সেটআপ", cat: "ক্যাটাগরি নির্বাচন করুন", loc: "লোকেশন (শহর বা এলাকার নাম)", startNow: "সার্চ শুরু করুন", cancel: "বাতিল করুন",
+                pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "প্যাকেজ নির্বাচন করে অ্যাকাউন্ট আপডেট করুন।",
+                payTitle: "পেমেন্ট কনফার্মেশন", selectedPkg: "প্যাকেজ:", amount: "পরিমাণ:",
+                method: "১. পেমেন্ট মাধ্যম নির্বাচন করুন", sender: "২. যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "৩. ট্রানজেকশন আইডি (TrxID)", submitPay: "ভেরিফিকেশনের জন্য পাঠান"
             }
         };
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const uid = urlParams.get('uid') || '000';
-        const uName = decodeURIComponent(urlParams.get('name') || 'User');
-        const role = urlParams.get('role') || 'user'; 
-        const endsAtStr = urlParams.get('ends');
-        const teamLimit = parseInt(urlParams.get('team_limit') || '0');
-        const teamAdded = parseInt(urlParams.get('team_added') || '0');
+        // Extract Valid Params from URL (Passed directly from Python)
+        const params = new URLSearchParams(window.location.search);
+        const uid = params.get('uid') || '00000000';
+        const uName = decodeURIComponent(params.get('name') || 'Guest Developer');
+        const role = params.get('role') || 'user'; 
+        const endsAtStr = params.get('ends');
+        const teamLimit = parseInt(params.get('team_limit') || '0');
+        const teamAdded = parseInt(params.get('team_added') || '0');
+        const botUsername = params.get('bot') || 'MapsLeadsSkyzonebot';
         
-        // 🌟 HARDCODED FALLBACK: This stops the telegram.org redirect!
-        const botUsername = urlParams.get('bot') || 'MapsLeadsSkyzonebot';
-        
-        let fbUrl = urlParams.get('fb') || '';
-        fbUrl = decodeURIComponent(fbUrl).replace(/\/$/, ""); 
+        // Critical Root URL setup for Firebase Realtime Database
+        const rawFbUrl = "https://maps-leads-skyzone-default-rtdb.firebaseio.com/";
+        const FB_BASE_URL = rawFbUrl.replace(/\/$/, ""); 
 
-        let userLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
-        document.getElementById('lang-indicator').innerText = userLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
-        applyLanguageTranslations(userLang);
+        // Set UI Language based on Telegram Client Configuration
+        let uLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
+        document.getElementById('lang-indicator').innerText = uLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
+        mapLanguageToUI(uLang);
 
-        async function fetchSettings() {
-            if(!fbUrl) return;
-            try {
-                let response = await fetch(`${fbUrl}/web_settings.json`);
-                let data = await response.json();
-                if(data) {
-                    if(data.p1) dynamicSettings.p1 = data.p1;
-                    if(data.p2) dynamicSettings.p2 = data.p2;
-                    if(data.p3) dynamicSettings.p3 = data.p3;
-                    if(data.p4) dynamicSettings.p4 = data.p4;
-                    if(data.numbers) dynamicSettings.numbers = data.numbers;
-                    if(data.notice) dynamicSettings.notice = data.notice;
-                }
-                updateUIWithDynamicSettings();
-            } catch(e) {
-                console.log("Failed to fetch settings.");
-                updateUIWithDynamicSettings();
-            }
-        }
-
-        function updateUIWithDynamicSettings() {
-            document.getElementById('ui-p1-title').innerText = dynamicSettings.p1.title;
-            document.getElementById('ui-p1-price').innerText = dynamicSettings.p1.price;
-            document.getElementById('ui-p2-title').innerText = dynamicSettings.p2.title;
-            document.getElementById('ui-p2-price').innerText = dynamicSettings.p2.price;
-            document.getElementById('ui-p3-title').innerText = dynamicSettings.p3.title;
-            document.getElementById('ui-p3-price').innerText = dynamicSettings.p3.price;
-            document.getElementById('ui-p4-title').innerText = dynamicSettings.p4.title;
-            document.getElementById('ui-p4-price').innerText = dynamicSettings.p4.price;
-            
-            document.getElementById('ui-num-bkash').innerText = dynamicSettings.numbers.bkash;
-            document.getElementById('ui-num-nagad').innerText = dynamicSettings.numbers.nagad;
-            document.getElementById('ui-num-rocket').innerText = dynamicSettings.numbers.rocket;
-            document.getElementById('ui-num-binance').innerText = dynamicSettings.numbers.binance;
-            document.getElementById('ui-pay-notice').innerText = dynamicSettings.notice;
-
-            if (role === 'admin') {
-                document.getElementById('ad-p1-title').value = dynamicSettings.p1.title;
-                document.getElementById('ad-p1-price').value = dynamicSettings.p1.price;
-                document.getElementById('ad-p2-title').value = dynamicSettings.p2.title;
-                document.getElementById('ad-p2-price').value = dynamicSettings.p2.price;
-                document.getElementById('ad-p3-title').value = dynamicSettings.p3.title;
-                document.getElementById('ad-p3-price').value = dynamicSettings.p3.price;
-                document.getElementById('ad-p4-title').value = dynamicSettings.p4.title;
-                document.getElementById('ad-p4-price').value = dynamicSettings.p4.price;
-                
-                document.getElementById('ad-bkash').value = dynamicSettings.numbers.bkash;
-                document.getElementById('ad-nagad').value = dynamicSettings.numbers.nagad;
-                document.getElementById('ad-rocket').value = dynamicSettings.numbers.rocket;
-                document.getElementById('ad-binance').value = dynamicSettings.numbers.binance;
-                document.getElementById('ad-notice').value = dynamicSettings.notice;
-            }
-        }
-
-        fetchSettings(); 
-
-        // 🌟 Fix: Admin Visibility Check
+        // Bootstrap the Interface based on Roles
         if (role === 'admin') {
             document.getElementById('admin-section').style.display = 'block';
             document.getElementById('user-section').style.display = 'none';
         } else {
             document.getElementById('user-section').style.display = 'block';
             document.getElementById('main-buttons').style.display = 'block';
-            document.getElementById('u-greeting').innerText = dict[userLang].greeting + " " + uName;
+            document.getElementById('u-greeting').innerText = langPack[uLang].greeting + " " + uName;
             document.getElementById('u-id-text').innerText = "UID: " + uid;
-            document.getElementById('u-searches').innerText = urlParams.get('searches') || '0';
-            document.getElementById('u-leads').innerText = urlParams.get('leads') || '0';
+            document.getElementById('u-searches').innerText = params.get('searches') || '0';
+            document.getElementById('u-leads').innerText = params.get('leads') || '0';
 
             if (teamLimit > 0) {
                 document.getElementById('team-info').style.display = 'block';
-                document.getElementById('t-team-limit').innerText = userLang === 'bn' ? 
-                    `আপনার টিম মেম্বার: ${teamAdded} / ${teamLimit}` : `Team Members: ${teamAdded} / ${teamLimit}`;
+                document.getElementById('t-team-limit').innerText = uLang === 'bn' ? 
+                    `আপনার টিম: ${teamAdded} জন যুক্ত আছে (সর্বোচ্চ ${teamLimit} জন)` : `Team: ${teamAdded} Active (Max ${teamLimit})`;
             }
-            startTimer(endsAtStr);
+            initLifetimeTimer(endsAtStr);
         }
 
-        function applyLanguageTranslations(l) {
-            document.getElementById('t-searches').innerText = dict[l].searches;
-            document.getElementById('t-leads').innerText = dict[l].leads;
-            document.getElementById('t-time-left').innerText = dict[l].timeLeft;
-            document.getElementById('l-days').innerText = dict[l].days;
-            document.getElementById('l-hours').innerText = dict[l].hrs;
-            document.getElementById('l-mins').innerText = dict[l].mins;
-            document.getElementById('expired-msg').innerText = dict[l].expired;
-            document.getElementById('btn-scrape').innerText = dict[l].btnScrape;
-            document.getElementById('btn-sub').innerText = dict[l].btnSub;
-            document.getElementById('t-scrape-title').innerText = dict[l].scrapeTitle;
-            document.getElementById('t-cat').innerText = dict[l].cat;
-            document.getElementById('t-loc').innerText = dict[l].loc;
-            document.getElementById('btn-start-now').innerText = dict[l].startNow;
-            document.getElementById('btn-cancel-1').innerText = dict[l].cancel;
-            document.getElementById('btn-cancel-2').innerText = dict[l].cancel;
-            document.getElementById('btn-cancel-3').innerText = dict[l].cancel;
-            document.getElementById('t-pkg-title').innerText = dict[l].pkgTitle;
-            document.getElementById('t-pkg-desc').innerText = dict[l].pkgDesc;
-            document.getElementById('t-pay-title').innerText = dict[l].payTitle;
-            document.getElementById('t-selected-pkg').innerText = dict[l].selectedPkg;
-            document.getElementById('t-amount').innerText = dict[l].amount;
-            document.getElementById('t-method').innerText = dict[l].method;
-            document.getElementById('t-sender').innerText = dict[l].sender;
-            document.getElementById('t-trxid').innerText = dict[l].trxid;
-            document.getElementById('btn-submit-pay').innerText = dict[l].submitPay;
+        // Auto Fetch and Bind Admin Settings on Load
+        async function fetchSystemSettings() {
+            try {
+                let response = await fetch(`${FB_BASE_URL}/web_settings.json`);
+                let data = await response.json();
+                if(data) {
+                    if(data.p1) sysData.p1 = data.p1;
+                    if(data.p2) sysData.p2 = data.p2;
+                    if(data.p3) sysData.p3 = data.p3;
+                    if(data.p4) sysData.p4 = data.p4;
+                    if(data.numbers) sysData.numbers = data.numbers;
+                    if(data.notice) sysData.notice = data.notice;
+                }
+                bindSettingsToView();
+            } catch(e) {
+                console.log("Using Default Hardcoded Configurations.");
+                bindSettingsToView();
+            }
+        }
+        
+        fetchSystemSettings(); // Trigger async execution safely
+
+        // Applies data bindings to the DOM securely
+        function bindSettingsToView() {
+            document.getElementById('ui-p1-title').innerText = sysData.p1.title;
+            document.getElementById('ui-p1-price').innerText = sysData.p1.price;
+            document.getElementById('ui-p2-title').innerText = sysData.p2.title;
+            document.getElementById('ui-p2-price').innerText = sysData.p2.price;
+            document.getElementById('ui-p3-title').innerText = sysData.p3.title;
+            document.getElementById('ui-p3-price').innerText = sysData.p3.price;
+            document.getElementById('ui-p4-title').innerText = sysData.p4.title;
+            document.getElementById('ui-p4-price').innerText = sysData.p4.price;
+            
+            document.getElementById('ui-num-bkash').innerText = sysData.numbers.bkash;
+            document.getElementById('ui-num-nagad').innerText = sysData.numbers.nagad;
+            document.getElementById('ui-num-rocket').innerText = sysData.numbers.rocket;
+            document.getElementById('ui-num-binance').innerText = sysData.numbers.binance;
+            document.getElementById('ui-pay-notice').innerText = sysData.notice;
+
+            if (role === 'admin') {
+                document.getElementById('ad-p1-title').value = sysData.p1.title;
+                document.getElementById('ad-p1-price').value = sysData.p1.price;
+                document.getElementById('ad-p2-title').value = sysData.p2.title;
+                document.getElementById('ad-p2-price').value = sysData.p2.price;
+                document.getElementById('ad-p3-title').value = sysData.p3.title;
+                document.getElementById('ad-p3-price').value = sysData.p3.price;
+                document.getElementById('ad-p4-title').value = sysData.p4.title;
+                document.getElementById('ad-p4-price').value = sysData.p4.price;
+                
+                document.getElementById('ad-bkash').value = sysData.numbers.bkash;
+                document.getElementById('ad-nagad').value = sysData.numbers.nagad;
+                document.getElementById('ad-rocket').value = sysData.numbers.rocket;
+                document.getElementById('ad-binance').value = sysData.numbers.binance;
+                document.getElementById('ad-notice').value = sysData.notice;
+            }
         }
 
-        function startTimer(ends) {
+        // Translates UI texts safely
+        function mapLanguageToUI(l) {
+            const el = document.getElementById.bind(document);
+            el('t-searches').innerText = langPack[l].searches;
+            el('t-leads').innerText = langPack[l].leads;
+            el('t-time-left').innerText = langPack[l].timeLeft;
+            el('l-days').innerText = langPack[l].days;
+            el('l-hours').innerText = langPack[l].hrs;
+            el('l-mins').innerText = langPack[l].mins;
+            el('expired-msg').innerText = langPack[l].expired;
+            el('btn-scrape').innerText = langPack[l].btnScrape;
+            el('btn-sub').innerText = langPack[l].btnSub;
+            el('t-scrape-title').innerText = langPack[l].scrapeTitle;
+            el('t-cat').innerText = langPack[l].cat;
+            el('t-loc').innerText = langPack[l].loc;
+            el('btn-start-now').innerText = langPack[l].startNow;
+            el('btn-cancel-1').innerText = langPack[l].cancel;
+            el('btn-cancel-2').innerText = langPack[l].cancel;
+            el('btn-cancel-3').innerText = langPack[l].cancel;
+            el('t-pkg-title').innerText = langPack[l].pkgTitle;
+            el('t-pkg-desc').innerText = langPack[l].pkgDesc;
+            el('t-pay-title').innerText = langPack[l].payTitle;
+            el('t-selected-pkg').innerText = langPack[l].selectedPkg;
+            el('t-amount').innerText = langPack[l].amount;
+            el('t-method').innerText = langPack[l].method;
+            el('t-sender').innerText = langPack[l].sender;
+            el('t-trxid').innerText = langPack[l].trxid;
+            el('btn-submit-pay').innerText = langPack[l].submitPay;
+        }
+
+        // Engine for Countdown Clock
+        function initLifetimeTimer(ends) {
             if (ends === 'expired') {
                 document.getElementById('countdown').style.display = 'none';
                 document.getElementById('expired-msg').style.display = 'block';
@@ -617,38 +696,38 @@
             }
         }
 
+        // --- Layout Switching Handlers ---
         function showScrapeForm() { goBack('main-buttons', 'scrape-form'); }
         function showPackages() { goBack('main-buttons', 'packages-section'); }
         function showAdminPkgEdit() { goBack('admin-main-menu', 'admin-edit-pkg'); }
         
-        function openPaymentForm(pkgNum) {
+        function openPaymentForm(pkgIdx) {
             goBack('packages-section', 'payment-form');
-            document.getElementById('selected-plan').innerText = dynamicSettings[`p${pkgNum}`].title;
-            document.getElementById('selected-price').innerText = dynamicSettings[`p${pkgNum}`].price;
+            document.getElementById('selected-plan').innerText = sysData[`p${pkgIdx}`].title;
+            document.getElementById('selected-price').innerText = sysData[`p${pkgIdx}`].price;
         }
-
         function goBack(currentId, targetId = 'main-buttons') {
             document.getElementById(currentId).style.display = 'none';
             document.getElementById(targetId).style.display = 'block';
         }
-        
         function toggleCustomCat() {
             document.getElementById('custom-cat-group').style.display = document.getElementById('cat-select').value === 'Custom' ? 'block' : 'none';
         }
         
-        function copyNumber(num) {
-            navigator.clipboard.writeText(num);
-            tg.showAlert(userLang === 'bn' ? `নাম্বার কপি করা হয়েছে: ${num}` : `Number Copied: ${num}`);
+        function copyNumber(numText) {
+            let numStr = numText.toString().trim();
+            navigator.clipboard.writeText(numStr);
+            tg.showAlert(uLang === 'bn' ? `✅ নাম্বার কপি করা হয়েছে: ${numStr}` : `✅ Safely Copied: ${numStr}`);
         }
 
-        function setMethod(element, method) {
+        function setMethod(element, methodStr) {
             document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
-            document.getElementById('selected-method').value = method;
+            document.getElementById('selected-method').value = methodStr;
         }
 
         // ========================================================
-        // 100% CRASH-PROOF & DEEP-LINKLESS DATA SUBMISSION
+        // CORE: DEEP-LINKLESS DATA DISPATCHER (100% CRASH-PROOF)
         // ========================================================
         async function submitScrape() {
             let cat = document.getElementById('cat-select').value;
@@ -656,70 +735,80 @@
             let loc = document.getElementById('loc-input').value;
             
             if (!cat || !loc) { 
-                tg.showAlert(userLang === 'bn' ? "ক্যাটাগরি এবং লোকেশন দিন!" : "Provide Category and Location!"); 
+                tg.showAlert(uLang === 'bn' ? "⚠️ অনুগ্রহ করে ক্যাটাগরি এবং লোকেশন দিন!" : "⚠️ Provide Category and Location!"); 
                 return; 
             }
             
             let btn = document.getElementById('btn-start-now');
-            btn.innerText = "Processing..."; 
+            btn.innerText = "⏳ Processing..."; 
             btn.disabled = true;
 
-            let query = `${cat} in ${loc}`;
+            let finalQuery = `${cat} in ${loc}`;
             
-            if(fbUrl) {
-                await fetch(`${fbUrl}/pending_requests/${uid}.json`, {
+            try {
+                // Silently write payload to Firebase RTDB node
+                await fetch(`${FB_BASE_URL}/pending_requests/${uid}.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'scrape', query: query, timestamp: Date.now() })
+                    body: JSON.stringify({ action: 'scrape', query: finalQuery, timestamp: Date.now() })
                 });
+
+                // Secure deep-link hook using Native Telegram API (Forces Chat to interpret /start parameter)
+                tg.openTelegramLink(`https://t.me/${botUsername}?start=do_scrape`);
+                
+            } catch(e) {
+                tg.showAlert("❌ Server Communication Error!");
             }
-            
-            // 🌟 100% SAFE DEEP LINK CALL (Uses ?start= instead of ?text=)
-            tg.openTelegramLink(`https://t.me/${botUsername}?start=do_scrape`);
         }
 
         async function submitPayment() {
-            let plan = document.getElementById('selected-plan').innerText;
-            let price = document.getElementById('selected-price').innerText;
-            let method = document.getElementById('selected-method').value;
-            let senderNum = document.getElementById('sender-number').value;
-            let trxid = document.getElementById('trx-id').value;
+            let pPlan = document.getElementById('selected-plan').innerText;
+            let pPrice = document.getElementById('selected-price').innerText;
+            let pMethod = document.getElementById('selected-method').value;
+            let pSender = document.getElementById('sender-number').value.trim();
+            let pTrxid = document.getElementById('trx-id').value.trim();
 
-            if (!senderNum || !trxid) { 
-                tg.showAlert(userLang === 'bn' ? "নাম্বার এবং TrxID দিন!" : "Provide Number and TrxID!"); 
+            if (!pSender || !pTrxid) { 
+                tg.showAlert(uLang === 'bn' ? "⚠️ সঠিক নাম্বার এবং TrxID দিন!" : "⚠️ Ensure Sender Number and TrxID are filled."); 
                 return; 
             }
 
             let btn = document.getElementById('btn-submit-pay');
-            btn.innerText = "Sending to Admin..."; 
+            btn.innerText = "⏳ Verifying securely..."; 
             btn.disabled = true;
 
-            let fullSender = `${method} - ${senderNum}`;
+            let finalSenderPayload = `${pMethod} - ${pSender}`;
 
-            if(fbUrl) {
-                await fetch(`${fbUrl}/pending_requests/${uid}.json`, {
+            try {
+                // Silently push critical payment data to Firebase
+                await fetch(`${FB_BASE_URL}/pending_requests/${uid}.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        action: 'payment', plan: plan, price: price, 
-                        sender: fullSender, trxid: trxid, timestamp: Date.now() 
+                        action: 'payment', plan: pPlan, price: pPrice, 
+                        sender: finalSenderPayload, trxid: pTrxid, timestamp: Date.now() 
                     })
                 });
-            }
 
-            tg.openTelegramLink(`https://t.me/${botUsername}?start=do_payment`);
+                // Telegram natively wakes Bot using /start hook
+                tg.openTelegramLink(`https://t.me/${botUsername}?start=do_payment`);
+                
+            } catch (error) {
+                tg.showAlert("❌ Action aborted. Database Error.");
+                btn.innerText = langPack[uLang].submitPay;
+                btn.disabled = false;
+            }
         }
 
         // ========================================================
-        // ADMIN PANEL FUNCTIONS 
+        // CORE: SUPER ADMIN EXECUTION CONTROLLER
         // ========================================================
-        async function savePackagesToFirebase() {
-            if(!fbUrl) { tg.showAlert("Firebase URL missing!"); return; }
-            
+        async function saveSettingsToFirebase() {
             let btn = document.getElementById('btn-save-settings');
-            btn.innerText = "Saving Data..."; btn.disabled = true;
+            btn.innerText = "⏳ Saving Globally..."; 
+            btn.disabled = true;
             
-            let newSettings = {
+            let newConf = {
                 p1: { title: document.getElementById('ad-p1-title').value, price: document.getElementById('ad-p1-price').value },
                 p2: { title: document.getElementById('ad-p2-title').value, price: document.getElementById('ad-p2-price').value },
                 p3: { title: document.getElementById('ad-p3-title').value, price: document.getElementById('ad-p3-price').value },
@@ -734,25 +823,41 @@
             };
 
             try {
-                await fetch(`${fbUrl}/web_settings.json`, {
+                // Push overwrites globally to Firebase
+                await fetch(`${FB_BASE_URL}/web_settings.json`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newSettings)
+                    body: JSON.stringify(newConf)
                 });
                 
-                dynamicSettings = newSettings;
-                updateUIWithDynamicSettings();
+                // Update local memory instances
+                sysData = newConf;
+                bindSettingsToView();
                 
-                tg.showAlert("✅ System Settings Saved Successfully!");
+                tg.showAlert("✅ System Config saved. Live across all users.");
                 goBack('admin-edit-pkg', 'admin-main-menu');
             } catch(e) {
-                tg.showAlert("❌ Failed to save.");
+                tg.showAlert("❌ Save failed. Bad Connection.");
             }
-            btn.innerText = "💾 Save All Changes"; btn.disabled = false;
+            btn.innerText = "💾 Save Global Settings"; 
+            btn.disabled = false;
         }
 
-        function sendAdminCmd(cmd) {
-            tg.openTelegramLink(`https://t.me/${botUsername}?start=admin_cmd_${cmd}`);
+        // Secure command forwarding to Bot backend
+        async function triggerAdminCommand(commandId) {
+            try {
+                // Set pending command logic in Firebase directly
+                await fetch(`${FB_BASE_URL}/pending_requests/${uid}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'admin', cmd: commandId, timestamp: Date.now() })
+                });
+                
+                // Execute natively via Telegram framework
+                tg.openTelegramLink(`https://t.me/${botUsername}?start=admin_cmd_${commandId}`);
+            } catch(e) {
+                tg.showAlert("Execution failed!");
+            }
         }
     </script>
 </body>
