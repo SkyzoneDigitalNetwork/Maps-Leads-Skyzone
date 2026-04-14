@@ -126,9 +126,9 @@ async def analyze_with_ai(bot, is_error=False):
     recent_logs.clear()
     
     if is_error:
-        prompt = f"Expert AI System Analyst. Analyze this Google Maps Scraper bot ERROR log and give an emergency Bengali report:\n{logs_text}"
+        prompt = f"Expert AI System Analyst. Analyze this Google Maps Scraper bot ERROR log and give an emergency English report:\n{logs_text}"
     else:
-        prompt = f"Expert AI System Analyst. Analyze these B2B Scraper logs and give a short Bengali report on team performance and errors:\n{logs_text}"
+        prompt = f"Expert AI System Analyst. Analyze these B2B Scraper logs and give a short English report on team performance and errors:\n{logs_text}"
 
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
@@ -144,13 +144,13 @@ async def analyze_with_ai(bot, is_error=False):
         logger.error(f"AI Error: {e}")
 
 async def send_log(bot, user_name, user_id, action):
-    log_text = f"👤 **{user_name}** (`{user_id}`)\n📌 অ্যাকশন: {action}\n🕒 সময়: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    log_text = f"👤 **{user_name}** (`{user_id}`)\n📌 Action: {action}\n🕒 Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     if LOG_GROUP_ID:
         try: await bot.send_message(chat_id=LOG_GROUP_ID, text=log_text, parse_mode='Markdown')
         except: pass
 
     recent_logs.append(log_text)
-    if "এরর" in action or "Error" in action or "Executable doesn't exist" in action or "❌" in action: 
+    if "Error" in action or "Error" in action or "Executable doesn't exist" in action or "❌" in action: 
         asyncio.create_task(analyze_with_ai(bot, is_error=True))
     elif len(recent_logs) >= 15: 
         asyncio.create_task(analyze_with_ai(bot, is_error=False))
@@ -169,7 +169,7 @@ async def extract_email(url):
 
 # --- Scraper Engine ---
 async def scraper_worker(query, user_id, user_name, bot):
-    await send_log(bot, user_name, user_id, f"স্ক্র্যাপিং শুরু করেছে: `{query}`")
+    await send_log(bot, user_name, user_id, f"Started scraping: `{query}`")
     
     if not is_super_admin(user_id):
         user_ref = db.reference(f'bot_users/{user_id}')
@@ -182,7 +182,7 @@ async def scraper_worker(query, user_id, user_name, bot):
 
     status_msg = await bot.send_message(
         chat_id=user_id, 
-        text=f"🚀 **{query}** এর জন্য ম্যাপে খোঁজা হচ্ছে...\nদয়া করে অপেক্ষা করুন।", 
+        text=f"🚀 Searching maps for **{query}**...\nPlease wait.", 
         parse_mode='Markdown'
     )
 
@@ -208,7 +208,7 @@ async def scraper_worker(query, user_id, user_name, bot):
             total_places = len(place_urls)
             await bot.edit_message_text(
                 chat_id=user_id, message_id=status_msg.message_id, 
-                text=f"🔍 **{total_places}** টি বিজনেস পাওয়া গেছে।\nডেটা সেভ করা হচ্ছে...", parse_mode='Markdown'
+                text=f"🔍 **{total_places}** businesses found.\nSaving data...", parse_mode='Markdown'
             )
 
             for idx, url in enumerate(place_urls):
@@ -217,7 +217,7 @@ async def scraper_worker(query, user_id, user_name, bot):
                     try: 
                         await bot.edit_message_text(
                             chat_id=user_id, message_id=status_msg.message_id, 
-                            text=f"⏳ **লাইভ স্ক্র্যাপিং...**\n🎯 টার্গেট: `{query}`\n🔍 পাওয়া গেছে: **{total_places}**\n🔄 চেক: **{idx}**\n✅ সেভ: **{leads_found}**", 
+                            text=f"⏳ **Live Scraping...**\n🎯 Target: `{query}`\n🔍 Found: **{total_places}**\n🔄 Checked: **{idx}**\n✅ Saved: **{leads_found}**", 
                             parse_mode='Markdown'
                         )
                     except: pass
