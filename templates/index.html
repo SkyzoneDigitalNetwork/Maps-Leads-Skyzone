@@ -329,7 +329,7 @@
             <p style="font-size: 12px; color: var(--muted); margin-bottom: 20px;" id="t-scrape-desc">Select target and location carefully.</p>
             
             <div class="form-group">
-                <label id="t-cat">Category (ক্যাটাগরি)</label>
+                <label id="t-cat">Category</label>
                 <select id="cat-select" onchange="toggleCustomCat()">
                     <!-- Exactly 20 Categories Maintained for maximum coverage -->
                     <option value="Restaurants">1. Restaurants</option>
@@ -359,7 +359,7 @@
                 <input type="text" id="custom-cat" placeholder="e.g. Car Wash Services">
             </div>
             <div class="form-group">
-                <label id="t-loc">Location (জায়গার নাম)</label>
+                <label id="t-loc">Location</label>
                 <input type="text" id="loc-input" placeholder="e.g. Dhaka, Bangladesh">
             </div>
             <button class="btn btn-primary" onclick="submitScrape()" id="btn-start-now">Start Extraction</button>
@@ -428,7 +428,7 @@
             </div>
 
             <div class="form-group">
-                <label id="t-sender" style="font-size: 14px;">2. Sender Number (যে নাম্বার থেকে পাঠিয়েছেন)</label>
+                <label id="t-sender" style="font-size: 14px;">2. Sender Number</label>
                 <input type="text" id="sender-number" placeholder="e.g. 017XXXXXXXX" autocomplete="off">
             </div>
             <div class="form-group">
@@ -533,13 +533,13 @@
                 method: "1. Select Transfer Method", sender: "2. Sender Number (Account used)", trxid: "3. Transaction ID (TrxID)", submitPay: "Send to Administrator"
             },
             bn: {
-                greeting: "স্বাগতম,", searches: "সার্চ", leads: "লিড", timeLeft: "সাবস্ক্রিপশনের মেয়াদ আছে",
-                days: "দিন", hrs: "ঘণ্টা", mins: "মিনিট", expired: "⚠️ আপনার মেয়াদ শেষ হয়ে গেছে!",
-                btnScrape: "🚀 স্ক্র্যাপিং শুরু করুন", btnSub: "💎 সাবস্ক্রিপশন ও প্যাকেজ",
-                scrapeTitle: "নতুন সার্চ সেটআপ", cat: "ক্যাটাগরি নির্বাচন করুন", loc: "লোকেশন (শহর বা এলাকার নাম)", startNow: "সার্চ শুরু করুন", cancel: "বাতিল করুন",
-                pkgTitle: "প্রিমিয়াম প্যাকেজসমূহ", pkgDesc: "প্যাকেজ নির্বাচন করে অ্যাকাউন্ট আপডেট করুন।",
-                payTitle: "পেমেন্ট কনফার্মেশন", selectedPkg: "প্যাকেজ:", amount: "পরিমাণ:",
-                method: "১. পেমেন্ট মাধ্যম নির্বাচন করুন", sender: "২. যে নাম্বার থেকে টাকা পাঠিয়েছেন", trxid: "৩. ট্রানজেকশন আইডি (TrxID)", submitPay: "ভেরিফিকেশনের জন্য পাঠান"
+                greeting: "Hello,", searches: "Searches", leads: "Leads", timeLeft: "Subscription Time Left",
+                days: "Days", hrs: "Hrs", mins: "Min", expired: "⚠️ ACCOUNT EXPIRED!",
+                btnScrape: "🚀 Start Extraction", btnSub: "💎 Packages & Pricing",
+                scrapeTitle: "New Target Search", cat: "Select Category", loc: "Target Location", startNow: "Start Processing", cancel: "Cancel",
+                pkgTitle: "Premium Upgrade", pkgDesc: "Choose your preferred package below.",
+                payTitle: "Submit Verification", selectedPkg: "Selected Package:", amount: "Total Amount:",
+                method: "1. Select Transfer Method", sender: "2. Sender Number (Account used)", trxid: "3. Transaction ID (TrxID)", submitPay: "Send to Administrator"
             }
         };
 
@@ -559,7 +559,7 @@
 
         // Set UI Language based on Telegram Client Configuration
         let uLang = (tg.initDataUnsafe?.user?.language_code || navigator.language).startsWith('bn') ? 'bn' : 'en';
-        document.getElementById('lang-indicator').innerText = uLang === 'bn' ? '🌐 বাংলা' : '🌐 English';
+        document.getElementById('lang-indicator').innerText = uLang === 'bn' ? '🌐 English' : '🌐 English';
         mapLanguageToUI(uLang);
 
         // Bootstrap the Interface based on Roles
@@ -577,7 +577,7 @@
             if (teamLimit > 0) {
                 document.getElementById('team-info').style.display = 'block';
                 document.getElementById('t-team-limit').innerText = uLang === 'bn' ? 
-                    `আপনার টিম: ${teamAdded} জন যুক্ত আছে (সর্বোচ্চ ${teamLimit} জন)` : `Team: ${teamAdded} Active (Max ${teamLimit})`;
+                    `Team: ${teamAdded} Active (Max ${teamLimit})` : `Team: ${teamAdded} Active (Max ${teamLimit})`;
             }
             initLifetimeTimer(endsAtStr);
         }
@@ -717,7 +717,7 @@
         function copyNumber(numText) {
             let numStr = numText.toString().trim();
             navigator.clipboard.writeText(numStr);
-            tg.showAlert(uLang === 'bn' ? `✅ নাম্বার কপি করা হয়েছে: ${numStr}` : `✅ Safely Copied: ${numStr}`);
+            tg.showAlert(uLang === 'bn' ? `✅ Safely Copied: ${numStr}` : `✅ Safely Copied: ${numStr}`);
         }
 
         function setMethod(element, methodStr) {
@@ -735,7 +735,7 @@
             let loc = document.getElementById('loc-input').value;
             
             if (!cat || !loc) { 
-                tg.showAlert(uLang === 'bn' ? "⚠️ অনুগ্রহ করে ক্যাটাগরি এবং লোকেশন দিন!" : "⚠️ Provide Category and Location!"); 
+                tg.showAlert(uLang === 'bn' ? "⚠️ Provide Category and Location!" : "⚠️ Provide Category and Location!"); 
                 return; 
             }
             
@@ -769,7 +769,7 @@
             let pTrxid = document.getElementById('trx-id').value.trim();
 
             if (!pSender || !pTrxid) { 
-                tg.showAlert(uLang === 'bn' ? "⚠️ সঠিক নাম্বার এবং TrxID দিন!" : "⚠️ Ensure Sender Number and TrxID are filled."); 
+                tg.showAlert(uLang === 'bn' ? "⚠️ Ensure Sender Number and TrxID are filled." : "⚠️ Ensure Sender Number and TrxID are filled."); 
                 return; 
             }
 
